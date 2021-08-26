@@ -15,22 +15,22 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
-CUSTOM_EMAIL_EB_EVENT = {
-    "version": "0",
-    "id": "0d24c07d-bba0-6ae8-3c1c-ec2282016258",
-    "detail-type": "REDACTED",
-    "source": "qualtrics",
-    "account": "REDACTED",
-    "time": "2021-08-26T14:18:42Z",
-    "region": "REDACTED",
-    "resources": [],
-    "detail": {
-        "template_name": "test_custom_email",
-        "file_name": "Interview form",
-        "file_description": "This is the interview form you will need to print before your appointment",
-        "file_instruction": "Please do NOT print this double-sided",
-        "file_download_url": "https://www.thiscovery.org",
-        "anon_project_specific_user_id": "1ef35c8b-6f78-4c45-8de0-9e7e4f297b20",
-        "project_task_id": "b335c46a-bc1b-4f3d-ad0f-0b8d0826a908",
-    }
-}
+import local.dev_config  # sets env variable 'TEST_ON_AWS'
+import local.secrets  # sets AWS profile as env variable
+import thiscovery_dev_tools.testing_tools as test_tools
+from http import HTTPStatus
+from pprint import pprint
+
+from custom_email import custom_email
+import tests.test_data as td
+
+
+class CustomEmailTestCase(test_tools.BaseTestCase):
+
+    def test_custom_email_event_handled_ok(self):
+        """
+        This only tests that a notification was created successfully
+        in Dynamodb; it doesn't test processing of that notification
+        """
+        r = custom_email(td.CUSTOM_EMAIL_EB_EVENT, None)
+        self.assertEqual(HTTPStatus.CREATED, r['statusCode'])
