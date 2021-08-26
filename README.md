@@ -1,2 +1,2 @@
-# thiscovery-skeleton
-Template Thiscovery stack
+# thiscovery-crm
+Thiscovery integration with CRM system
