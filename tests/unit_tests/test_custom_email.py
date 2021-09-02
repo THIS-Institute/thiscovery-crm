@@ -26,11 +26,14 @@ import tests.test_data as td
 
 
 class CustomEmailTestCase(test_tools.BaseTestCase):
-
+    """
+    These tests only test that a notification was created successfully
+    in Dynamodb; they don't test processing of notifications
+    """
     def test_custom_email_event_handled_ok(self):
-        """
-        This only tests that a notification was created successfully
-        in Dynamodb; it doesn't test processing of that notification
-        """
         r = custom_email(td.CUSTOM_EMAIL_EB_EVENT, None)
-        self.assertEqual(HTTPStatus.CREATED, r['statusCode'])
+        self.assertEqual(HTTPStatus.NO_CONTENT, r['statusCode'])
+
+    def test_custom_email_event_without_id_handled_ok(self):
+        r = custom_email(td.CUSTOM_EMAIL_EB_EVENT_NO_ID, None)
+        self.assertEqual(HTTPStatus.NO_CONTENT, r['statusCode'])

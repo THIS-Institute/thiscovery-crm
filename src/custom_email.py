@@ -28,14 +28,27 @@ def custom_email(event, context):
     detail = event['detail']
     try:
         template_name = detail.pop('template_name')
-        aps_user_id = detail.pop('anon_project_specific_user_id')
     except KeyError as err:
         raise utils.DetailedValueError(f"Missing mandatory data {err} in source event detail", details=event)
 
-    email_dict = {
-        'to_recipient_id': aps_user_id,
+    try:
+        email_dict = {
+            'to_recipient_id': detail.pop('anon_project_specific_user_id')
+        }
+    except KeyError:
+        try:
+            email_dict = {
+                'to_recipient_email': detail.pop('to_recipient_email')
+            }
+        except KeyError:
+            raise utils.DetailedValueError(
+                f"Either to_recipient_id or to_recipient_email must be present "
+                f"in source event detail; none found", details=event
+            )
+
+    email_dict.update({
         "custom_properties": detail,
-    }
+    })
 
     core_api_client = CoreApiClient(correlation_id=correlation_id)
     return core_api_client.send_transactional_email(template_name=template_name, **email_dict)

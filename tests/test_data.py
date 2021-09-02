@@ -15,6 +15,8 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
+import copy
+
 CUSTOM_EMAIL_EB_EVENT = {
     "version": "0",
     "id": "0d24c07d-bba0-6ae8-3c1c-ec2282016258",
@@ -34,3 +36,13 @@ CUSTOM_EMAIL_EB_EVENT = {
         "project_task_id": "b335c46a-bc1b-4f3d-ad0f-0b8d0826a908",
     }
 }
+
+CUSTOM_EMAIL_EB_EVENT_NO_ID = copy.deepcopy(CUSTOM_EMAIL_EB_EVENT)
+CUSTOM_EMAIL_EB_EVENT_NO_ID['detail'] = {
+        "template_name": "test_custom_email",
+        "to_recipient_email": "clive@email.com",
+        "subject": "[thiscovery notification] ABC WP1.4a participant was redirected to interview booking",
+        "title": "ABC WP1.4a participant was redirected to interview booking",
+        "message_body": "Participant 9313c872-c7b3-4b29-afc7-c42aeef326ba has just been redirect to interview booking. "
+                        "Please check Qualtrics for their choice on how to receive the forms"
+    }
