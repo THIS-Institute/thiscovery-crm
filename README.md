@@ -1,2 +1,2 @@
 # thiscovery-crm
-Thiscovery integration with CRM system
+Thiscovery integration with CRM system.
