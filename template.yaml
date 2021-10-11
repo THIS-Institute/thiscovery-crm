@@ -3,23 +3,26 @@ Resources:
   CustomEmail:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub ${AWS::StackName}-CustomEmail
+      FunctionName: !Sub '${AWS::StackName}-CustomEmail'
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: CustomEmail
       CodeUri: src
-      Handler: custom_email.custom_email
+      Handler: epsagon.wrapper
       Runtime: python3.8
-      MemorySize: !Ref EnvConfiglambdamemorysizeAsString
-      Timeout: !Ref EnvConfiglambdatimeoutAsString
+      MemorySize: !Ref 'EnvConfiglambdamemorysizeAsString'
+      Timeout: !Ref 'EnvConfiglambdatimeoutAsString'
       Tracing: Active
       Policies:
         - AWSXrayWriteOnlyAccess
         - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
+            SecretArn: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*'
       Environment:
         Variables:
-          SECRETS_NAMESPACE: !Sub /${EnvironmentTagName}/
+          SECRETS_NAMESPACE: !Sub '/${EnvironmentTagName}/'
+          EPSAGON_HANDLER: custom_email.custom_email
+          EPSAGON_APP_NAME: '!Ref ${AWS::StackName}'
+          EPSAGON_TOKEN: '!Ref EpsagontokenAsString'
       Events:
         EventRule:
           Type: EventBridgeRule
@@ -27,9 +30,11 @@ Resources:
             Pattern:
               detail-type:
                 - custom_email
-            EventBusName: !Ref EnvConfigeventbridgethiscoveryeventbusAsString
+            EventBusName: !Ref 'EnvConfigeventbridgethiscoveryeventbusAsString'
           Metadata:
             StackeryName: CustomEmail
+      Layers:
+        - arn:aws:lambda:eu-west-1:066549572091:layer:epsagon-python-layer:325
 Parameters:
   StackTagName:
     Type: String
@@ -46,6 +51,9 @@ Parameters:
   EnvConfigeventbridgethiscoveryeventbusAsString:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /<EnvironmentName>/eventbridge/thiscovery-event-bus
+  EpsagontokenAsString:
+    Type: String
+    Description: Epsagon token (GitHub secret injected by deployment script)
 Metadata:
   EnvConfigParameters:
     EnvConfiglambdamemorysizeAsString: lambda.memory-size

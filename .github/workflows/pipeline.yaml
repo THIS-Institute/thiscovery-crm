@@ -9,6 +9,7 @@ on:
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  EPSAGON_TOKEN: ${{ secrets.EPSAGON_TOKEN }}
   SAM_TEMPLATE: template.yaml
   TESTING_STACK_NAME: thiscovery-crm-test
   TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::266657513168:role/aws-sam-cli-managed-test-pip-PipelineExecutionRole-YN8MOPNUWHB2
@@ -71,7 +72,7 @@ jobs:
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides "StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
+            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
 
   build-and-package:
     if: github.ref == 'refs/heads/master'
@@ -163,7 +164,7 @@ jobs:
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides "StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
+            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
 
   integration-test:
     if: github.ref == 'refs/heads/master'
@@ -209,4 +210,4 @@ jobs:
             --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --role-arn ${PROD_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides "StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${PROD_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${PROD_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${PROD_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${PROD_ENV}/eventbridge/thiscovery-event-bus\""
+            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${PROD_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${PROD_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${PROD_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${PROD_ENV}/eventbridge/thiscovery-event-bus\""
