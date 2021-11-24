@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from thiscovery_dev_tools.deploy_to_aws import AwsDeployer
+from thiscovery_dev_tools.aws_deployer import AwsDeployer
 
 import local.dev_config  # set environment variables
 import local.secrets  # set environment variables
