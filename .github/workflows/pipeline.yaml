@@ -60,7 +60,7 @@ jobs:
           echo "TESTING_CF_ROLE=arn:aws:iam::${{ env.AWS_TEST_ACCOUNT }}:role/thiscovery-devops-${{ env.AWS_TEST_ENV }}-eu-west-1-CFExec" >> $GITHUB_ENV
 
   build-and-deploy-to-test-environment:
-    needs: [set-test-env]
+    needs: [calculate-env-variables]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -84,9 +84,9 @@ jobs:
         run: |
           sam deploy --debug \ 
             --region ${TESTING_REGION} \
-            --s3-bucket ${{ env.TESTING_ARTIFACTS_BUCKET }} \
-            --stack-name ${{ env.STACK_NAME }}-${{ env.AWS_TEST_ENV }} \
+            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
+            --stack-name ${STACK_NAME}-${AWS_TEST_ENV} \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset \
-            --role-arn ${{ env.TESTING_CF_ROLE }} \
-            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"${{ env.STACK_NAME }}\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
+            --role-arn ${TESTING_CF_ROLE} \
+            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"${STACK_NAME}\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
