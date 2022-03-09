@@ -18,44 +18,44 @@
 import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
-import thiscovery_lib.notification_send as notif_send
-from thiscovery_lib.core_api_utilities import CoreApiClient
+from thiscovery_lib.hubspot_utilities import HubSpotClient
 
-import common.constants as const
+from thiscovery_lib.utilities import (
+    new_correlation_id,
+)
+
+from thiscovery_lib.notification_send import (
+    notify_new_user_registration,
+)
 
 
 @utils.lambda_wrapper
 def record_user_registration_event(event, context):
-    # todo: write the code for this lambda handler; the example below is from user_login.py
-    pass
-    # namespace = utils.get_aws_namespace()
-    # logger = event["logger"]
-    # logger.info("API call", extra={"namespace": namespace, "event": event})
-    #
-    # # # Note that Auth0 event log sources are either prod or staging. If this code is being invoked in other environments then
-    # # # it is because events are being forwarded for dev/test purposes.  In this scenario the user referred to in the event will
-    # # # not exist in this environment's RDS database or HubSpot database.  So ignore.
-    # # if namespace in ['/prod/', '/staging/']:
-    #
-    # # event will contain an Auth0 event of type 's''
-    # event_id = event[
-    #     "id"
-    # ]  # note that event id will be used as correlation id for subsequent processing
-    # detail_data = event["detail"]["data"]
-    # event_type = detail_data["type"]
-    # login_datetime = detail_data["date"].replace("T", " ").replace("Z", "")
-    # user_email = detail_data["user_name"]
-    # core_api_client = CoreApiClient(correlation_id=event_id)
-    # user = core_api_client.get_user_by_email(email=user_email)
-    # for x in ["has_demo_project", "has_live_project", "title"]:
-    #     del user[x]
-    # login_info = {
-    #     **user,
-    #     "login_datetime": login_datetime,
-    # }
-    # notif_send.notify_user_login(
-    #     login_info,
-    #     event_id,
-    #     stack_name=const.STACK_NAME,
-    # )
-    # return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
+    logger = event['logger']
+    notification_id = event["id"]
+    details = event["details"]
+    details['email'] = event['user_name']
+    details['created'] = event['created']
+    user_data = event['details']['detail']['data']['details']['body']['user_metadata']
+    details['first_name'] = user_data['first_name']
+    details['last_name'] = user_data['last_name']
+    details['country_name'] = user_data['country']
+    details['id'] = user_data['citsci_uuid']
+
+    correlation_id = new_correlation_id()
+    hs_client = HubSpotClient(correlation_id=correlation_id)
+
+    notify_new_user_registration(details, correlation_id, stack_name='thiscovery-crm')
+
+    hubspot_id, is_new = hs_client.post_new_user_to_crm(details)
+    logger.info(
+        "process_user_registration: hubspot details",
+        extra={
+            "notification_id": str(notification_id),
+            "hubspot_id": str(hubspot_id),
+            "isNew": str(is_new),
+            "correlation_id": str(correlation_id),
+        },
+    )
+
+    return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
