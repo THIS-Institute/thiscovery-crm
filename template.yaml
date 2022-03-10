@@ -212,6 +212,9 @@ Parameters:
   EnvConfiglambdatimeoutAsString:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /<EnvironmentName>/lambda/timeout
+  EnvConfigeventbridgeauth0eventbusAsString:
+      Type: AWS::SSM::Parameter::Value<String>
+      Default: /<EnvironmentName>/eventbridge/auth0-event-bus
   EnvConfigeventbridgethiscoveryeventbusAsString:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /<EnvironmentName>/eventbridge/thiscovery-event-bus
