@@ -19,10 +19,6 @@ import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
 
-from thiscovery_lib.utilities import (
-    new_correlation_id,
-)
-
 from thiscovery_lib.notification_send import (
     notify_new_user_registration,
 )
@@ -43,10 +39,8 @@ def record_user_registration_event(event, context):
         'id': user_data['citsci_uuid'],
     }
 
-    correlation_id = new_correlation_id()
-
     notify_new_user_registration(
-        details, correlation_id, stack_name=common.constants.STACK_NAME
+        details, event['id'], stack_name=common.constants.STACK_NAME
     )
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
