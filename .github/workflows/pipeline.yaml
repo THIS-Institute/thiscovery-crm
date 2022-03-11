@@ -28,45 +28,54 @@ env:
   PROD_ENV: staging
 
 jobs:
-  set-test-env:
-    name: Configure test environment
+  test:
+    name: Deploy to testing env and run tests
     runs-on: ubuntu-latest
     steps:
-      - name: Sets env vars for afs25
+      # Configure target test account based on pull request actor
+      - if: ${{ github.actor == 'afs25' }}
+        name: Sets env vars for afs25
         run: |
           echo "AWS_TEST_ACCOUNT=${{ secrets.AFS25_AWS_ACCOUNT }}" >> $GITHUB_ENV
           echo "AWS_TEST_ENV=test-afs25" >> $GITHUB_ENV
-        if: ${{ github.actor == 'afs25' }}
 
-      - name: Sets env vars for sem86
+      - if: ${{ github.actor == 'sophiemachin' }}
+        name: Sets env vars for sem86
         run: |
           echo "AWS_TEST_ACCOUNT=${{ secrets.SEM86_AWS_ACCOUNT }}" >> $GITHUB_ENV
-        if: ${{ github.actor == 'sophiemachin' }}
+          echo "AWS_TEST_ENV=test-sem86" >> $GITHUB_ENV
 
-      - name: Sets env vars for amp205
+      - if: ${{ github.actor == 'this-andy' }}
+        name: Sets env vars for amp205
         run: |
           echo "AWS_TEST_ACCOUNT=${{ secrets.AMP205_AWS_ACCOUNT }}" >> $GITHUB_ENV
-        if: ${{ github.actor == 'this-andy' }}
+          echo "AWS_TEST_ENV=test-amp205" >> $GITHUB_ENV
 
-  calculate-env-variables:
-    needs: [set-test-env]
-    name: Calculate env variables
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "STACK_NAME=$(echo ${{ github.repository }} | awk -F "/" '{print $2}')" >> $GITHUB_ENV
-          echo "TESTING_ARTIFACTS_BUCKET=thiscovery-devops-${{ env.AWS_TEST_ENV }}-deployment-artifacts" >> $GITHUB_ENV
-          echo "TESTING_PIPELINE_ROLE=arn:aws:iam::${{ env.AWS_TEST_ACCOUNT }}:role/thiscovery-devops-${{ env.AWS_TEST_ENV }}-eu-west-1-PipelineExec" >> $GITHUB_ENV
-          echo "TESTING_CF_ROLE=arn:aws:iam::${{ env.AWS_TEST_ACCOUNT }}:role/thiscovery-devops-${{ env.AWS_TEST_ENV }}-eu-west-1-CFExec" >> $GITHUB_ENV
+      - name: Set additional test env variables
+        run: |
+          echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
+          echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
+          echo "TESTING_PIPELINE_EXECUTION_ROLE=thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-PipelineExec" >> $GITHUB_ENV
 
-  build-and-deploy-to-test-environment:
-    needs: [calculate-env-variables]
-    runs-on: ubuntu-latest
-    steps:
+      # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
+      - name: DEBUG STEP - check that test environment is set correctly
+        run: |
+          echo "Aws test account: ${AWS_TEST_ACCOUNT}"
+          echo "Aws test env: ${AWS_TEST_ENV}"
+          echo "Secrets namespace: ${SECRETS_NAMESPACE}"
+          echo "Unit test namespace: ${UNIT_TEST_NAMESPACE}"
+          echo "Testing pipeline execution role: ${TESTING_PIPELINE_EXECUTION_ROLE}"
+
+      # Build and deploy to test environment
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
       - uses: aws-actions/setup-sam@v1
-      - run: sam build --template ${SAM_TEMPLATE} --use-container
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
@@ -74,19 +83,11 @@ jobs:
           aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.TESTING_REGION }}
-          role-to-assume: ${{ env.TESTING_PIPELINE_ROLE }}
+          role-to-assume: ${TESTING_PIPELINE_EXECUTION_ROLE}
           role-session-name: feature-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - name: Deploy to testing account
-        shell: bash
+      - name: Execute deployment script
         run: |
-          sam deploy --debug \ 
-            --region ${TESTING_REGION} \
-            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
-            --stack-name ${STACK_NAME}-${AWS_TEST_ENV} \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset \
-            --role-arn ${TESTING_CF_ROLE} \
-            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"${STACK_NAME}\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
+          python .github/workflows/deploy.py
