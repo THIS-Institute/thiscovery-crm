@@ -33,8 +33,6 @@ import common
 
 @utils.lambda_wrapper
 def record_user_registration_event(event, context):
-    logger = event['logger']
-    notification_id = event["id"]
     user_data = event['details']['detail']['data']['details']['body']['user_metadata']
 
     details = {
@@ -53,15 +51,6 @@ def record_user_registration_event(event, context):
         details, correlation_id, stack_name=common.constants.STACK_NAME
     )
 
-    hubspot_id, is_new = hs_client.post_new_user_to_crm(details)
-    logger.info(
-        "process_user_registration: hubspot details",
-        extra={
-            "notification_id": str(notification_id),
-            "hubspot_id": str(hubspot_id),
-            "isNew": str(is_new),
-            "correlation_id": str(correlation_id),
-        },
-    )
+    hs_client.post_new_user_to_crm(details)
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
