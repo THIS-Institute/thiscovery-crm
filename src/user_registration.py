@@ -33,14 +33,16 @@ from thiscovery_lib.notification_send import (
 def record_user_registration_event(event, context):
     logger = event['logger']
     notification_id = event["id"]
-    details = event["details"]
-    details['email'] = event['user_name']
-    details['created'] = event['created']
     user_data = event['details']['detail']['data']['details']['body']['user_metadata']
-    details['first_name'] = user_data['first_name']
-    details['last_name'] = user_data['last_name']
-    details['country_name'] = user_data['country']
-    details['id'] = user_data['citsci_uuid']
+
+    details = {
+        'email': event['user_name'],
+        'created': event['created'],
+        'first_name': user_data['first_name'],
+        'last_name': user_data['last_name'],
+        'country_name': user_data['country'],
+        'id': user_data['citsci_uuid'],
+    }
 
     correlation_id = new_correlation_id()
     hs_client = HubSpotClient(correlation_id=correlation_id)
