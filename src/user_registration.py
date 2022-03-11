@@ -18,7 +18,6 @@
 import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
-from thiscovery_lib.hubspot_utilities import HubSpotClient
 
 from thiscovery_lib.utilities import (
     new_correlation_id,
