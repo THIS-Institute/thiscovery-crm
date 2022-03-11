@@ -28,6 +28,8 @@ from thiscovery_lib.notification_send import (
     notify_new_user_registration,
 )
 
+import common
+
 
 @utils.lambda_wrapper
 def record_user_registration_event(event, context):
@@ -47,7 +49,9 @@ def record_user_registration_event(event, context):
     correlation_id = new_correlation_id()
     hs_client = HubSpotClient(correlation_id=correlation_id)
 
-    notify_new_user_registration(details, correlation_id, stack_name='thiscovery-crm')
+    notify_new_user_registration(
+        details, correlation_id, stack_name=common.constants.STACK_NAME
+    )
 
     hubspot_id, is_new = hs_client.post_new_user_to_crm(details)
     logger.info(
