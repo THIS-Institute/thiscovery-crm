@@ -45,12 +45,9 @@ def record_user_registration_event(event, context):
     }
 
     correlation_id = new_correlation_id()
-    hs_client = HubSpotClient(correlation_id=correlation_id)
 
     notify_new_user_registration(
         details, correlation_id, stack_name=common.constants.STACK_NAME
     )
-
-    hs_client.post_new_user_to_crm(details)
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
