@@ -28,19 +28,19 @@ import common
 
 @utils.lambda_wrapper
 def record_user_registration_event(event, context):
-    user_data = event['details']['detail']['data']['details']['body']['user_metadata']
+    user_data = event["details"]["detail"]["data"]["details"]["body"]["user_metadata"]
 
     details = {
-        'email': event['user_name'],
-        'created': event['created'],
-        'first_name': user_data['first_name'],
-        'last_name': user_data['last_name'],
-        'country_name': user_data['country'],
-        'id': user_data['citsci_uuid'],
+        "email": event["user_name"],
+        "created": event["created"],
+        "first_name": user_data["first_name"],
+        "last_name": user_data["last_name"],
+        "country_name": user_data["country"],
+        "id": user_data["citsci_uuid"],
     }
 
     notify_new_user_registration(
-        details, event['id'], stack_name=common.constants.STACK_NAME
+        details, event["id"], stack_name=common.constants.STACK_NAME
     )
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
