@@ -18,44 +18,29 @@
 import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
-import thiscovery_lib.notification_send as notif_send
-from thiscovery_lib.core_api_utilities import CoreApiClient
 
-import common.constants as const
+from thiscovery_lib.notification_send import (
+    notify_new_user_registration,
+)
+
+import common
 
 
 @utils.lambda_wrapper
 def record_user_registration_event(event, context):
-    # todo: write the code for this lambda handler; the example below is from user_login.py
-    pass
-    # namespace = utils.get_aws_namespace()
-    # logger = event["logger"]
-    # logger.info("API call", extra={"namespace": namespace, "event": event})
-    #
-    # # # Note that Auth0 event log sources are either prod or staging. If this code is being invoked in other environments then
-    # # # it is because events are being forwarded for dev/test purposes.  In this scenario the user referred to in the event will
-    # # # not exist in this environment's RDS database or HubSpot database.  So ignore.
-    # # if namespace in ['/prod/', '/staging/']:
-    #
-    # # event will contain an Auth0 event of type 's''
-    # event_id = event[
-    #     "id"
-    # ]  # note that event id will be used as correlation id for subsequent processing
-    # detail_data = event["detail"]["data"]
-    # event_type = detail_data["type"]
-    # login_datetime = detail_data["date"].replace("T", " ").replace("Z", "")
-    # user_email = detail_data["user_name"]
-    # core_api_client = CoreApiClient(correlation_id=event_id)
-    # user = core_api_client.get_user_by_email(email=user_email)
-    # for x in ["has_demo_project", "has_live_project", "title"]:
-    #     del user[x]
-    # login_info = {
-    #     **user,
-    #     "login_datetime": login_datetime,
-    # }
-    # notif_send.notify_user_login(
-    #     login_info,
-    #     event_id,
-    #     stack_name=const.STACK_NAME,
-    # )
-    # return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
+    user_data = event["details"]["detail"]["data"]["details"]["body"]["user_metadata"]
+
+    details = {
+        "email": event["user_name"],
+        "created": event["created"],
+        "first_name": user_data["first_name"],
+        "last_name": user_data["last_name"],
+        "country_name": user_data["country"],
+        "id": user_data["citsci_uuid"],
+    }
+
+    notify_new_user_registration(
+        details, event["id"], stack_name=common.constants.STACK_NAME
+    )
+
+    return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
