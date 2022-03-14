@@ -1,5 +1,5 @@
 # Local/test requirements go here
 requests >= 2.26
 https://github.com/THIS-Institute/thiscovery-lib/archive/refs/heads/master.zip
-https://github.com/THIS-Institute/thiscovery-dev-tools/archive/refs/heads/master.zip
+https://github.com/THIS-Institute/thiscovery-dev-tools/archive/refs/heads/4472-move-deployer-to-separate-repo.zip
 
