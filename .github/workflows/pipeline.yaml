@@ -85,7 +85,7 @@ jobs:
           aws-region: ${{ env.TESTING_REGION }}
           role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
           role-session-name: feature-deployment
-          role-duration-seconds: 3600
+          role-duration-seconds: 3500
           role-skip-session-tagging: true
 
       - name: Execute thiscovery deployment script
