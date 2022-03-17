@@ -88,6 +88,6 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - name: Execute deployment script
+      - name: Execute thiscovery deployment script
         run: |
           python .github/workflows/deploy.py
