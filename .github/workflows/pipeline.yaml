@@ -56,6 +56,9 @@ jobs:
           echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
           echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
           echo "TESTING_PIPELINE_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "TESTING_ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
+          echo "TESTING_CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-CFExec" >> $GITHUB_ENV
+          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
 
       # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
       - name: DEBUG STEP - check that test environment is set correctly
