@@ -90,4 +90,4 @@ jobs:
 
       - name: Execute thiscovery deployment script
         run: |
-          python .github/workflows/deploy.py
+          python actions_deploy.py
