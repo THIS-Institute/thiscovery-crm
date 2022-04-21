@@ -94,9 +94,9 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-#      - name: Execute thiscovery deployment script
-#        run: |
-#          python actions_deploy.py
+      - name: Execute thiscovery deployment script
+        run: |
+          python actions_deploy.py
 
       # Assume the testing role
       - name: Assume the testing role in testing account
