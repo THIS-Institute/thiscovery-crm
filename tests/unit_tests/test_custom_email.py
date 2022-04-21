@@ -15,8 +15,12 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
-import local.dev_config  # sets env variable 'TEST_ON_AWS'
-import local.secrets  # sets AWS profile as env variable
+try:
+    import local.dev_config  # sets env variable 'TEST_ON_AWS'
+    import local.secrets  # sets AWS profile as env variable
+except ModuleNotFoundError:
+    pass
+
 import thiscovery_dev_tools.testing_tools as test_tools
 from http import HTTPStatus
 from pprint import pprint
