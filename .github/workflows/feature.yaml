@@ -1,0 +1,110 @@
+name: Feature pipeline
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+
+env:
+  PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  EPSAGON_TOKEN: ${{ secrets.EPSAGON_TOKEN }}
+  SAM_TEMPLATE: template.yaml
+  DEFAULT_REGION: eu-west-1
+
+jobs:
+  test:
+    name: Deploy to testing env and run tests
+    runs-on: ubuntu-latest
+    steps:
+      # Configure target test account based on pull request actor
+      - if: ${{ github.actor == 'afs25' }}
+        name: Sets env vars for afs25
+        run: |
+          echo "AWS_TEST_ACCOUNT=${{ secrets.AFS25_AWS_ACCOUNT }}" >> $GITHUB_ENV
+          echo "AWS_TEST_ENV=test-afs25" >> $GITHUB_ENV
+
+      - if: ${{ github.actor == 'sophiemachin' }}
+        name: Sets env vars for sem86
+        run: |
+          echo "AWS_TEST_ACCOUNT=${{ secrets.SEM86_AWS_ACCOUNT }}" >> $GITHUB_ENV
+          echo "AWS_TEST_ENV=test-sem86" >> $GITHUB_ENV
+
+      - if: ${{ github.actor == 'this-andy' }}
+        name: Sets env vars for amp205
+        run: |
+          echo "AWS_TEST_ACCOUNT=${{ secrets.AMP205_AWS_ACCOUNT }}" >> $GITHUB_ENV
+          echo "AWS_TEST_ENV=test-amp205" >> $GITHUB_ENV
+
+      - name: Set additional test env variables
+        run: |
+          echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
+          echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
+          echo "TEST_ON_AWS=True" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${DEFAULT_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${DEFAULT_REGION}-TestingExec" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
+          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${DEFAULT_REGION}-CFExec" >> $GITHUB_ENV
+          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+
+      # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
+      - name: DEBUG STEP - check that test environment is set correctly
+        run: |
+          echo "Aws test account: ${AWS_TEST_ACCOUNT}"
+          echo "Aws test env: ${AWS_TEST_ENV}"
+          echo "Secrets namespace: ${SECRETS_NAMESPACE}"
+          echo "Unit test namespace: ${UNIT_TEST_NAMESPACE}"
+          echo "Testing account deployment role: ${TESTING_ACCOUNT_DEPLOYMENT_ROLE}"
+          echo "Testing account test role: ${TESTING_ACCOUNT_TEST_ROLE}"
+
+      # Build and deploy to test environment
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - uses: aws-actions/setup-sam@v1
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Assume the deployment pipeline user role in testing account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.DEFAULT_REGION }}
+          role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
+          role-session-name: feature-deployment
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
+      - name: Execute thiscovery deployment script
+        run: |
+          python actions_deploy.py
+
+      - name: DEBUG STEP - check parsed template
+        run: |
+          cat .thiscovery/template.yaml
+
+      # Assume the testing role
+      - name: Assume the testing role in testing account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+            aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+            aws-region: ${{ env.DEFAULT_REGION }}
+            role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
+            role-session-name: feature-testing
+            role-duration-seconds: 3600
+            role-skip-session-tagging: true
+
+      # Add src to PYTHONPATH to resolve imports
+      - name: Set pythonpath
+        run: |
+          echo "PYTHONPATH=./src" >> $GITHUB_ENV
+
+      # Run unit tests
+      - name: Run unit tests
+        run: |
+          python -m unittest discover -s ./tests/unit_tests -t ./tests/unit_tests

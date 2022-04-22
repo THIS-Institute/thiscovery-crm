@@ -1,11 +1,7 @@
-name: Pipeline
+name: Release pipeline
 
 on:
   push:
-    branches:
-      - 'master'
-      - '4361-github-pipeline-*'
-  pull_request:
     branches:
       - 'master'
 
