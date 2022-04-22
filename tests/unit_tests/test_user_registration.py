@@ -80,7 +80,7 @@ class TestUserRegistration(test_tools.BaseTestCase):
 
     def test_record_user_registration_ok(self):
         user_json = TEST_USER_01_JSON
-        if utils.running_on_aws():
+        if test_tools.tests_running_on_aws():
             lambda_client = Lambda(stack_name=const.STACK_NAME)
             lambda_client.invoke(
                 function_name="RecordUserRegistration",
