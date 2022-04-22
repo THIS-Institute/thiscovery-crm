@@ -98,6 +98,10 @@ jobs:
         run: |
           python actions_deploy.py
 
+      - name: DEBUG STEP - check parsed template
+        run: |
+          cat .thiscovery/template.yaml
+
       # Assume the testing role
       - name: Assume the testing role in testing account
         uses: aws-actions/configure-aws-credentials@v1
