@@ -54,7 +54,6 @@ class TestUserEvents(test_tools.BaseTestCase):
             lambda_client = Lambda(stack_name=const.STACK_NAME)
             lambda_client.invoke(
                 function_name="RecordUserLogin",
-                invocation_type="Event",
                 payload=SUCCESSFUL_LOGIN,
             )
         else:

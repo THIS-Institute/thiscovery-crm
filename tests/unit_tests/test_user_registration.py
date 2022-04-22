@@ -84,7 +84,6 @@ class TestUserRegistration(test_tools.BaseTestCase):
             lambda_client = Lambda(stack_name=const.STACK_NAME)
             lambda_client.invoke(
                 function_name="RecordUserRegistration",
-                invocation_type="Event",
                 payload=SUCCESSFUL_REGISTRATION,
             )
         else:
