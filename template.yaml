@@ -85,7 +85,7 @@ Resources:
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: RecordUserRegistration
       CodeUri: src
-      Handler: user_registration.record_user_registration
+      Handler: user_registration.record_user_registration_event
       Runtime: python3.8
       MemorySize: !Ref EnvConfiglambdamemorysizeAsString
       Timeout: !Ref EnvConfiglambdatimeoutAsString

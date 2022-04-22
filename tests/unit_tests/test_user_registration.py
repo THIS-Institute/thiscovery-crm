@@ -15,8 +15,12 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
-import local.dev_config
-import local.secrets
+try:
+    import local.dev_config  # sets env variable 'TEST_ON_AWS'
+    import local.secrets  # sets AWS profile as env variable
+except ModuleNotFoundError:
+    pass
+
 import thiscovery_lib.notifications as notif
 import thiscovery_lib.utilities as utils
 from thiscovery_dev_tools import testing_tools as test_tools
@@ -76,11 +80,10 @@ class TestUserRegistration(test_tools.BaseTestCase):
 
     def test_record_user_registration_ok(self):
         user_json = TEST_USER_01_JSON
-        if utils.running_on_aws():
+        if test_tools.tests_running_on_aws():
             lambda_client = Lambda(stack_name=const.STACK_NAME)
             lambda_client.invoke(
                 function_name="RecordUserRegistration",
-                invocation_type="Event",
                 payload=SUCCESSFUL_REGISTRATION,
             )
         else:

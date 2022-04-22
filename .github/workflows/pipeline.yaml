@@ -4,23 +4,18 @@ on:
   push:
     branches:
       - 'master'
-      - 'feature**'
+      - '4361-github-pipeline-*'
+  pull_request:
+    branches:
+      - 'master'
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   EPSAGON_TOKEN: ${{ secrets.EPSAGON_TOKEN }}
   SAM_TEMPLATE: template.yaml
-  TESTING_STACK_NAME: thiscovery-crm-test
-  TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::266657513168:role/aws-sam-cli-managed-test-pip-PipelineExecutionRole-YN8MOPNUWHB2
-  TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::266657513168:role/aws-sam-cli-managed-test-CloudFormationExecutionR-1LGMHDZLKOAMI
-  TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-test-pipeline-artifactsbucket-18cbvpks9yqbq
-  # If there are functions with "Image" PackageType in your template,
-  # uncomment the line below and add "--image-repository ${TESTING_IMAGE_REPOSITORY}" to
-  # testing "sam package" and "sam deploy" commands.
-  # TESTING_IMAGE_REPOSITORY = '0123456789.dkr.ecr.region.amazonaws.com/repository-name'
   TESTING_REGION: eu-west-1
-  TESTING_ENV: dev-afs25
+
   PROD_STACK_NAME: thiscovery-crm-staging
   PROD_PIPELINE_EXECUTION_ROLE: arn:aws:iam::756495104356:role/aws-sam-cli-managed-staging-PipelineExecutionRole-1EVVZ8OZFP6UJ
   PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::756495104356:role/aws-sam-cli-managed-stagi-CloudFormationExecutionR-1GVTGH3ZBWKAM
@@ -34,180 +29,97 @@ env:
 
 jobs:
   test:
+    name: Deploy to testing env and run tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - run: |
-          # trigger the tests here
+      # Configure target test account based on pull request actor
+      - if: ${{ github.actor == 'afs25' }}
+        name: Sets env vars for afs25
+        run: |
+          echo "AWS_TEST_ACCOUNT=${{ secrets.AFS25_AWS_ACCOUNT }}" >> $GITHUB_ENV
+          echo "AWS_TEST_ENV=test-afs25" >> $GITHUB_ENV
 
-  build-and-deploy-feature:
-    # this stage is triggered only for feature branches (feature*),
-    # which will build the stack and deploy to a stack named with branch name.
-    if: startsWith(github.ref, 'refs/heads/feature')
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
+      - if: ${{ github.actor == 'sophiemachin' }}
+        name: Sets env vars for sem86
+        run: |
+          echo "AWS_TEST_ACCOUNT=${{ secrets.SEM86_AWS_ACCOUNT }}" >> $GITHUB_ENV
+          echo "AWS_TEST_ENV=test-sem86" >> $GITHUB_ENV
+
+      - if: ${{ github.actor == 'this-andy' }}
+        name: Sets env vars for amp205
+        run: |
+          echo "AWS_TEST_ACCOUNT=${{ secrets.AMP205_AWS_ACCOUNT }}" >> $GITHUB_ENV
+          echo "AWS_TEST_ENV=test-amp205" >> $GITHUB_ENV
+
+      - name: Set additional test env variables
+        run: |
+          echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
+          echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
+          echo "TEST_ON_AWS=True" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${TESTING_REGION}-TestingExec" >> $GITHUB_ENV
+          echo "TESTING_ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
+          echo "TESTING_CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-CFExec" >> $GITHUB_ENV
+          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+
+      # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
+      - name: DEBUG STEP - check that test environment is set correctly
+        run: |
+          echo "Aws test account: ${AWS_TEST_ACCOUNT}"
+          echo "Aws test env: ${AWS_TEST_ENV}"
+          echo "Secrets namespace: ${SECRETS_NAMESPACE}"
+          echo "Unit test namespace: ${UNIT_TEST_NAMESPACE}"
+          echo "Testing account deployment role: ${TESTING_ACCOUNT_DEPLOYMENT_ROLE}"
+          echo "Testing account test role: ${TESTING_ACCOUNT_TEST_ROLE}"
+
+      # Build and deploy to test environment
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
       - uses: aws-actions/setup-sam@v1
-      - run: sam build --template ${SAM_TEMPLATE} --use-container
 
-      - name: Assume the testing pipeline user role
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Assume the deployment pipeline user role in testing account
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.TESTING_REGION }}
-          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
+          role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
           role-session-name: feature-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - name: Deploy to feature stack in the testing account
-        shell: bash
+      - name: Execute thiscovery deployment script
         run: |
-          sam deploy --stack-name $(echo ${GITHUB_REF##*/} | tr -cd '[a-zA-Z0-9-]') \
-            --capabilities CAPABILITY_IAM \
-            --region ${TESTING_REGION} \
-            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
-            --no-fail-on-empty-changeset \
-            --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
+          python actions_deploy.py
 
-  build-and-package:
-    if: github.ref == 'refs/heads/master'
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: aws-actions/setup-sam@v1
+      - name: DEBUG STEP - check parsed template
+        run: |
+          cat .thiscovery/template.yaml
 
-      - name: Build resources
-        run: sam build --template ${SAM_TEMPLATE} --use-container
-
-      - name: Assume the testing pipeline user role
+      # Assume the testing role
+      - name: Assume the testing role in testing account
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.TESTING_REGION }}
-          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
-          role-session-name: testing-packaging
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
+            aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+            aws-region: ${{ env.TESTING_REGION }}
+            role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
+            role-session-name: feature-testing
+            role-duration-seconds: 3600
+            role-skip-session-tagging: true
 
-      - name: Upload artifacts to testing artifact buckets
+      # Add src to PYTHONPATH to resolve imports
+      - name: Set pythonpath
         run: |
-          sam package \
-            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
-            --region ${TESTING_REGION} \
-            --output-template-file packaged-testing.yaml
+          echo "PYTHONPATH=./src" >> $GITHUB_ENV
 
-      - uses: actions/upload-artifact@v2
-        with:
-          name: packaged-testing.yaml
-          path: packaged-testing.yaml
-
-      - name: Assume the prod pipeline user role
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.PROD_REGION }}
-          role-to-assume: ${{ env.PROD_PIPELINE_EXECUTION_ROLE }}
-          role-session-name: prod-packaging
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Upload artifacts to production artifact buckets
+      # Run unit tests
+      - name: Run unit tests
         run: |
-          sam package \
-            --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
-            --region ${PROD_REGION} \
-            --output-template-file packaged-prod.yaml
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: packaged-prod.yaml
-          path: packaged-prod.yaml
-
-  deploy-testing:
-    if: github.ref == 'refs/heads/master'
-    needs: [build-and-package]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: aws-actions/setup-sam@v1
-      - uses: actions/download-artifact@v2
-        with:
-          name: packaged-testing.yaml
-
-      - name: Assume the testing pipeline user role
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.TESTING_REGION }}
-          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
-          role-session-name: testing-deployment
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Deploy to testing account
-        run: |
-          sam deploy --stack-name ${TESTING_STACK_NAME} \
-            --template packaged-testing.yaml \
-            --capabilities CAPABILITY_IAM \
-            --region ${TESTING_REGION} \
-            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
-            --no-fail-on-empty-changeset \
-            --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${TESTING_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${TESTING_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${TESTING_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${TESTING_ENV}/eventbridge/thiscovery-event-bus\""
-
-  integration-test:
-    if: github.ref == 'refs/heads/master'
-    needs: [deploy-testing]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - run: |
-          # trigger the integration tests here
-
-  deploy-prod:
-    if: github.ref == 'refs/heads/master'
-    needs: [integration-test]
-    runs-on: ubuntu-latest
-    # Configure GitHub Action Environment to have a manual approval step before deployment to production
-    # https://docs.github.com/en/actions/reference/environments
-    # environment: <configured-environment>
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: aws-actions/setup-sam@v1
-      - uses: actions/download-artifact@v2
-        with:
-          name: packaged-prod.yaml
-
-      - name: Assume the prod pipeline user role
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.PROD_REGION }}
-          role-to-assume: ${{ env.PROD_PIPELINE_EXECUTION_ROLE }}
-          role-session-name: prod-deployment
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Deploy to production account
-        run: |
-          sam deploy --stack-name ${PROD_STACK_NAME} \
-            --template packaged-prod.yaml \
-            --capabilities CAPABILITY_IAM \
-            --region ${PROD_REGION} \
-            --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
-            --no-fail-on-empty-changeset \
-            --role-arn ${PROD_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides "EpsagontokenAsString=${EPSAGON_TOKEN} StackTagName=\"thiscovery-crm\" EnvironmentTagName=\"${PROD_ENV}\" EnvConfiglambdamemorysizeAsString=\"/${PROD_ENV}/lambda/memory-size\" EnvConfiglambdatimeoutAsString=\"/${PROD_ENV}/lambda/timeout\" EnvConfigeventbridgethiscoveryeventbusAsString=\"/${PROD_ENV}/eventbridge/thiscovery-event-bus\""
+          python -m unittest discover -s ./tests/unit_tests -t ./tests/unit_tests
