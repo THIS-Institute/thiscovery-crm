@@ -14,18 +14,7 @@ env:
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   EPSAGON_TOKEN: ${{ secrets.EPSAGON_TOKEN }}
   SAM_TEMPLATE: template.yaml
-  TESTING_REGION: eu-west-1
-
-  PROD_STACK_NAME: thiscovery-crm-staging
-  PROD_PIPELINE_EXECUTION_ROLE: arn:aws:iam::756495104356:role/aws-sam-cli-managed-staging-PipelineExecutionRole-1EVVZ8OZFP6UJ
-  PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::756495104356:role/aws-sam-cli-managed-stagi-CloudFormationExecutionR-1GVTGH3ZBWKAM
-  PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-staging-pipel-artifactsbucket-1tnfw8mstb50t
-  # If there are functions with "Image" PackageType in your template,
-  # uncomment the line below and add "--image-repository ${PROD_IMAGE_REPOSITORY}" to
-  # prod "sam package" and "sam deploy" commands.
-  # PROD_IMAGE_REPOSITORY = '0123456789.dkr.ecr.region.amazonaws.com/repository-name'
-  PROD_REGION: eu-west-1
-  PROD_ENV: staging
+  DEFAULT_REGION: eu-west-1
 
 jobs:
   test:
@@ -56,10 +45,10 @@ jobs:
           echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
           echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
           echo "TEST_ON_AWS=True" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-PipelineExec" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${TESTING_REGION}-TestingExec" >> $GITHUB_ENV
-          echo "TESTING_ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
-          echo "TESTING_CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${TESTING_REGION}-CFExec" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${DEFAULT_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${DEFAULT_REGION}-TestingExec" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
+          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${DEFAULT_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
 
       # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
@@ -88,7 +77,7 @@ jobs:
         with:
           aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.TESTING_REGION }}
+          aws-region: ${{ env.DEFAULT_REGION }}
           role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
           role-session-name: feature-deployment
           role-duration-seconds: 3600
@@ -108,7 +97,7 @@ jobs:
         with:
             aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-            aws-region: ${{ env.TESTING_REGION }}
+            aws-region: ${{ env.DEFAULT_REGION }}
             role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
             role-session-name: feature-testing
             role-duration-seconds: 3600
@@ -123,3 +112,44 @@ jobs:
       - name: Run unit tests
         run: |
           python -m unittest discover -s ./tests/unit_tests -t ./tests/unit_tests
+
+  deploy-staging:
+    name: Deploy to staging environment
+    needs: [test]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Set env variables
+        run: |
+          echo "SECRETS_NAMESPACE=/staging/" >> $GITHUB_ENV
+          echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${DEFAULT_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET=thiscovery-devops-${{ secrets.STAGING_AWS_ACCOUNT }}-deployment-artifacts" >> $GITHUB_ENV
+          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${DEFAULT_REGION}-CFExec" >> $GITHUB_ENV
+          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+
+      # Build and deploy to staging
+      # todo: use sam package to upload artifacts to S3 buckets to avoid repeating build phase; note that artifact buckets defined in this pipeline are at present not used at all
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - uses: aws-actions/setup-sam@v1
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Assume the deployment pipeline user role in staging
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.DEFAULT_REGION }}
+          role-to-assume: ${{ env.STAGING_DEPLOYMENT_ROLE }}
+          role-session-name: staging-deployment
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
+      - name: Execute thiscovery deployment script
+        run: |
+          python actions_deploy.py
