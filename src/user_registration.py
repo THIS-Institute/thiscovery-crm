@@ -23,7 +23,7 @@ from thiscovery_lib.notification_send import (
     notify_new_user_registration,
 )
 
-import common
+from common.constants import STACK_NAME
 
 
 @utils.lambda_wrapper
@@ -40,7 +40,7 @@ def record_user_registration_event(event, context):
     }
 
     notify_new_user_registration(
-        details, event["id"], stack_name=common.constants.STACK_NAME
+        details, event["id"], stack_name=STACK_NAME
     )
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
