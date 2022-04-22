@@ -123,7 +123,7 @@ jobs:
         run: |
           echo "SECRETS_NAMESPACE=/staging/" >> $GITHUB_ENV
           echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${DEFAULT_REGION}-PipelineExec" >> $GITHUB_ENV
-          echo "ARTIFACTS_BUCKET=thiscovery-devops-${{ secrets.STAGING_AWS_ACCOUNT }}-deployment-artifacts" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET=thiscovery-devops-staging-deployment-artifacts" >> $GITHUB_ENV
           echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${DEFAULT_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
 
@@ -147,6 +147,46 @@ jobs:
           aws-region: ${{ env.DEFAULT_REGION }}
           role-to-assume: ${{ env.STAGING_DEPLOYMENT_ROLE }}
           role-session-name: staging-deployment
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
+      - name: Execute thiscovery deployment script
+        run: |
+          python actions_deploy.py
+
+  deploy-production:
+    name: Deploy to production
+    needs: [test]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set env variables
+        run: |
+          echo "SECRETS_NAMESPACE=/prod/" >> $GITHUB_ENV
+          echo "PROD_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${DEFAULT_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET=thiscovery-devops-prod-deployment-artifacts" >> $GITHUB_ENV
+          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${DEFAULT_REGION}-CFExec" >> $GITHUB_ENV
+          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+
+      # Build and deploy to production
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - uses: aws-actions/setup-sam@v1
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Assume the deployment pipeline user role in production
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.DEFAULT_REGION }}
+          role-to-assume: ${{ env.PROD_DEPLOYMENT_ROLE }}
+          role-session-name: production-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
