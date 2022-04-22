@@ -94,13 +94,13 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-#      - name: Execute thiscovery deployment script
-#        run: |
-#          python actions_deploy.py
-#
-#      - name: DEBUG STEP - check parsed template
-#        run: |
-#          cat .thiscovery/template.yaml
+      - name: Execute thiscovery deployment script
+        run: |
+          python actions_deploy.py
+
+      - name: DEBUG STEP - check parsed template
+        run: |
+          cat .thiscovery/template.yaml
 
       # Assume the testing role
       - name: Assume the testing role in testing account
