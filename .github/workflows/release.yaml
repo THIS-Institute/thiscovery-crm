@@ -87,9 +87,9 @@ jobs:
         run: |
           python actions_build.py
 
-      - name: DEBUG STEP - check parsed template
+      - name: DEBUG STEP - check built template
         run: |
-          cat .thiscovery/template.yaml
+          cat .aws-sam/build/template.yaml
 
       # Testing packaging
       - name: Upload artifacts to testing artifact bucket
@@ -106,6 +106,14 @@ jobs:
           path: ${{ env.STACK_NAME }}-packaged-testing.yaml
 
       # Staging packaging
+      - name: Replace environment name in built template
+        run: |
+          sed -i 's/${{ env.AWS_TEST_ENV }}/staging/' .aws-sam/build/template.yaml
+
+      - name: DEBUG STEP - check staging template
+        run: |
+          cat .aws-sam/build/template.yaml
+
       - name: Assume the deployment pipeline user role in staging
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -131,6 +139,14 @@ jobs:
           path: ${{ env.STACK_NAME }}-packaged-staging.yaml
 
       # Production packaging
+      - name: Replace environment name in built template
+        run: |
+          sed -i 's/staging/prod/' .aws-sam/build/template.yaml
+
+      - name: DEBUG STEP - check prod template
+        run: |
+          cat .aws-sam/build/template.yaml
+
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
         with:
