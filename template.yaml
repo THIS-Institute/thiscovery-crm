@@ -1,30 +1,29 @@
 Transform: AWS::Serverless-2016-10-31
 
+Globals:
+  Function:
+    Runtime: python3.8
+    MemorySize: !Ref EnvConfiglambdamemorysizeAsString
+    Timeout: !Ref EnvConfiglambdatimeoutAsString
+    CodeUri: src
+    Tracing: Active
+    Environment:
+      Variables:
+        SECRETS_NAMESPACE: !Sub /${EnvironmentTagName}/
 
 Resources:
   CustomEmail:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-CustomEmail'
+      FunctionName: !Sub ${AWS::StackName}-CustomEmail
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: CustomEmail
-      CodeUri: src
-      Handler: epsagon.wrapper
-      Runtime: python3.8
-      MemorySize: !Ref 'EnvConfiglambdamemorysizeAsString'
-      Timeout: !Ref 'EnvConfiglambdatimeoutAsString'
-      Tracing: Active
+      Handler: custom_email.custom_email
       Policies:
         - AWSXrayWriteOnlyAccess
         - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*'
-      Environment:
-        Variables:
-          SECRETS_NAMESPACE: !Sub '/${EnvironmentTagName}/'
-          EPSAGON_HANDLER: custom_email.custom_email
-          EPSAGON_APP_NAME: '!Ref ${AWS::StackName}'
-          EPSAGON_TOKEN: '!Ref EpsagontokenAsString'
+            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
       Events:
         EventRule:
           Type: EventBridgeRule
@@ -32,11 +31,9 @@ Resources:
             Pattern:
               detail-type:
                 - custom_email
-            EventBusName: !Ref 'EnvConfigeventbridgethiscoveryeventbusAsString'
+            EventBusName: !Ref EnvConfigeventbridgethiscoveryeventbusAsString
           Metadata:
             StackeryName: CustomEmail
-      Layers:
-        - arn:aws:lambda:eu-west-1:066549572091:layer:epsagon-python-layer:325
 
   RecordUserLogin:
     Type: AWS::Serverless::Function
@@ -45,12 +42,7 @@ Resources:
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: RecordUserLogin
-      CodeUri: src
       Handler: user_login.record_user_login_event
-      Runtime: python3.8
-      MemorySize: !Ref EnvConfiglambdamemorysizeAsString
-      Timeout: !Ref EnvConfiglambdatimeoutAsString
-      Tracing: Active
       Policies:
         - AWSXrayWriteOnlyAccess
         - AWSSecretsManagerGetSecretValuePolicy:
@@ -59,7 +51,6 @@ Resources:
             TableName: !Ref notifications
       Environment:
         Variables:
-          SECRETS_NAMESPACE: !Sub /${EnvironmentTagName}/
           TABLE_NAME: !Ref notifications
           TABLE_ARN: !GetAtt notifications.Arn
       Events:
@@ -84,12 +75,7 @@ Resources:
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: RecordUserRegistration
-      CodeUri: src
       Handler: user_registration.record_user_registration_event
-      Runtime: python3.8
-      MemorySize: !Ref EnvConfiglambdamemorysizeAsString
-      Timeout: !Ref EnvConfiglambdatimeoutAsString
-      Tracing: Active
       Policies:
         - AWSXrayWriteOnlyAccess
         - AWSSecretsManagerGetSecretValuePolicy:
@@ -98,7 +84,6 @@ Resources:
             TableName: !Ref notifications
       Environment:
         Variables:
-          SECRETS_NAMESPACE: !Sub /${EnvironmentTagName}/
           TABLE_NAME: !Ref notifications
           TABLE_ARN: !GetAtt notifications.Arn
       Events:
@@ -199,6 +184,8 @@ Resources:
           TABLE_ARN_2: !GetAtt tokens.Arn
     Metadata:
       StackeryName: process-notifications
+
+
 Parameters:
   StackTagName:
     Type: String
@@ -218,9 +205,8 @@ Parameters:
   EnvConfigeventbridgethiscoveryeventbusAsString:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /<EnvironmentName>/eventbridge/thiscovery-event-bus
-  EpsagontokenAsString:
-    Type: String
-    Description: Epsagon token (GitHub secret injected by deployment script)
+
+
 Metadata:
   EnvConfigParameters:
     EnvConfiglambdamemorysizeAsString: lambda.memory-size
