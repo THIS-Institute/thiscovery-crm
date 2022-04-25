@@ -71,15 +71,6 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Build resources using thiscovery deployer
-        run: |
-          python actions_build.py
-
-      - name: DEBUG STEP - check parsed template
-        run: |
-          cat .thiscovery/template.yaml
-
-      # Testing packaging
       - name: Assume the deployment pipeline user role in testing account
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -91,6 +82,15 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
+      - name: Build resources using thiscovery deployer
+        run: |
+          python actions_build.py
+
+      - name: DEBUG STEP - check parsed template
+        run: |
+          cat .thiscovery/template.yaml
+
+      # Testing packaging
       - name: Upload artifacts to testing artifact bucket
         run: |
           sam package \
