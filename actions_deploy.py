@@ -5,7 +5,7 @@ from src.common.constants import STACK_NAME
 
 def main():
     deployer = AwsDeployer(stack_name=STACK_NAME)
-    deployer.deploy()
+    deployer.deploy(confirm_cf_changeset=False)
 
 
 if __name__ == '__main__':
