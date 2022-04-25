@@ -51,6 +51,7 @@ jobs:
           echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
           echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "PROD_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
 
       - name: DEBUG STEP - check that test environment is set correctly
         run: |
@@ -115,7 +116,7 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - name: Upload artifacts to testing artifact bucket
+      - name: Upload artifacts to staging artifact bucket
         run: |
           sam package \
             --s3-bucket ${STAGING_ARTIFACTS_BUCKET} \
@@ -133,8 +134,8 @@ jobs:
         with:
           aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.PROD_REGION }}
-          role-to-assume: ${{ env.PROD_PIPELINE_EXECUTION_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.PROD_DEPLOYMENT_ROLE }}
           role-session-name: ${{ env.STACK_NAME }}-prod-packaging
           role-duration-seconds: 3600
           role-skip-session-tagging: true
