@@ -95,6 +95,7 @@ jobs:
       - name: Upload artifacts to testing artifact bucket
         run: |
           sam package \
+            --debug \
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --region ${AWS_REGION} \
             --output-template-file ${{ env.STACK_NAME }}-packaged-testing.yaml
@@ -119,6 +120,7 @@ jobs:
       - name: Upload artifacts to staging artifact bucket
         run: |
           sam package \
+            --debug \
             --s3-bucket ${STAGING_ARTIFACTS_BUCKET} \
             --region ${AWS_REGION} \
             --output-template-file ${{ env.STACK_NAME }}-packaged-staging.yaml
@@ -143,6 +145,7 @@ jobs:
       - name: Upload artifacts to production artifact buckets
         run: |
           sam package \
+            --debug \
             --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
             --region ${AWS_REGION} \
             --output-template-file ${{ env.STACK_NAME }}-packaged-prod.yaml
@@ -186,6 +189,7 @@ jobs:
           echo "ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
           echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+          echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-testing.yaml" >> $GITHUB_ENV
 
       - name: DEBUG STEP - check that test environment is set correctly
         run: |
@@ -204,7 +208,7 @@ jobs:
       - uses: aws-actions/setup-sam@v1
       - uses: actions/download-artifact@v2
         with:
-          name: ${{ env.STACK_NAME }}-packaged-testing.yaml
+          name: ${{ env.PACKAGED_TEMPLATE }}
 
       - name: Install dependencies
         run: |
