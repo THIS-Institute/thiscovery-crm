@@ -10,7 +10,8 @@ env:
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   EPSAGON_TOKEN: ${{ secrets.EPSAGON_TOKEN }}
   SAM_TEMPLATE: template.yaml
-  DEFAULT_REGION: eu-west-1
+  AWS_REGION: eu-west-1
+  STACK_NAME: thiscovery-crm
 
 jobs:
   test:
@@ -41,11 +42,12 @@ jobs:
           echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
           echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
           echo "TEST_ON_AWS=True" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${DEFAULT_REGION}-PipelineExec" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${DEFAULT_REGION}-TestingExec" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${AWS_REGION}-TestingExec" >> $GITHUB_ENV
           echo "ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
-          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${DEFAULT_REGION}-CFExec" >> $GITHUB_ENV
+          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+          echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-testing.yaml" >> $GITHUB_ENV
 
       # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
       - name: DEBUG STEP - check that test environment is set correctly
@@ -73,19 +75,38 @@ jobs:
         with:
           aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.DEFAULT_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
           role-session-name: feature-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - name: Execute thiscovery deployment script
+      - name: Build resources using thiscovery deployer
         run: |
-          python actions_deploy.py
+          python actions_build.py
 
       - name: DEBUG STEP - check parsed template
         run: |
           cat .thiscovery/template.yaml
+
+      # Packaging
+      - name: Upload artifacts to testing artifact bucket
+        run: |
+          sam package \
+            --debug \
+            --s3-bucket ${ARTIFACTS_BUCKET} \
+            --region ${AWS_REGION} \
+            --output-template-file ${{ env.PACKAGED_TEMPLATE }}
+
+      # This step is not really necessary because we are deploying using the same runner, but let's leave it here for debugging
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PACKAGED_TEMPLATE }}
+          path: ${{ env.PACKAGED_TEMPLATE }}
+
+      - name: Execute thiscovery deployment script
+        run: |
+          python actions_deploy.py
 
       # Assume the testing role
       - name: Assume the testing role in testing account
@@ -93,7 +114,7 @@ jobs:
         with:
             aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-            aws-region: ${{ env.DEFAULT_REGION }}
+            aws-region: ${{ env.AWS_REGION }}
             role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
             role-session-name: feature-testing
             role-duration-seconds: 3600

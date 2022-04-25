@@ -264,6 +264,7 @@ jobs:
           echo "ARTIFACTS_BUCKET=thiscovery-devops-staging-deployment-artifacts" >> $GITHUB_ENV
           echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${AWS_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+          echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-staging.yaml" >> $GITHUB_ENV
 
       # Build and deploy to staging
       - uses: actions/checkout@v2
@@ -273,7 +274,7 @@ jobs:
       - uses: aws-actions/setup-sam@v1
       - uses: actions/download-artifact@v2
         with:
-          name: ${{ env.STACK_NAME }}-packaged-staging.yaml
+          name: ${{ env.PACKAGED_TEMPLATE }}
 
       - name: Install dependencies
         run: |
@@ -307,6 +308,7 @@ jobs:
           echo "ARTIFACTS_BUCKET=thiscovery-devops-prod-deployment-artifacts" >> $GITHUB_ENV
           echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${AWS_REGION}-CFExec" >> $GITHUB_ENV
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
+          echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-prod.yaml" >> $GITHUB_ENV
 
       # Build and deploy to production
       - uses: actions/checkout@v2
@@ -316,7 +318,7 @@ jobs:
       - uses: aws-actions/setup-sam@v1
       - uses: actions/download-artifact@v2
         with:
-          name: ${{ env.STACK_NAME }}-packaged-prod.yaml
+          name: ${{ env.PACKAGED_TEMPLATE }}
 
       - name: Install dependencies
         run: |
