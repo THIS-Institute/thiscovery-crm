@@ -46,5 +46,16 @@ jobs:
         run: |
           python actions_deploy.py
 
+      - name: Assume the testing role in testing account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
+          role-session-name: ${{ env.STACK_NAME }}-testing
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
       - name: Run tests
         uses: ./.github/actions/run-unittests
