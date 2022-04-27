@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - '4534-*'
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -20,35 +21,14 @@ jobs:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      # Configure target test account based on pull request actor
-      - if: ${{ github.actor == 'afs25' }}
-        name: Sets env vars for afs25
-        run: |
-          echo "AWS_TEST_ACCOUNT=${{ secrets.AFS25_AWS_ACCOUNT }}" >> $GITHUB_ENV
-          echo "AWS_TEST_ENV=test-afs25" >> $GITHUB_ENV
-
-      - if: ${{ github.actor == 'sophiemachin' }}
-        name: Sets env vars for sem86
-        run: |
-          echo "AWS_TEST_ACCOUNT=${{ secrets.SEM86_AWS_ACCOUNT }}" >> $GITHUB_ENV
-          echo "AWS_TEST_ENV=test-sem86" >> $GITHUB_ENV
-
-      - if: ${{ github.actor == 'this-andy' }}
-        name: Sets env vars for amp205
-        run: |
-          echo "AWS_TEST_ACCOUNT=${{ secrets.AMP205_AWS_ACCOUNT }}" >> $GITHUB_ENV
-          echo "AWS_TEST_ENV=test-amp205" >> $GITHUB_ENV
+      - uses: THIS-Institute/actions-configure-test-env@v0.7
+        with:
+          afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
+          sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
+          amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
       - name: Set additional env variables
         run: |
-          echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
-          echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
-          echo "TEST_ON_AWS=True" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${AWS_REGION}-TestingExec" >> $GITHUB_ENV
-          echo "TESTING_ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
-          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-CFExec" >> $GITHUB_ENV
-          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
           echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
           echo "PROD_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
 
@@ -95,7 +75,7 @@ jobs:
         run: |
           sam package \
             --debug \
-            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
+            --s3-bucket ${ARTIFACTS_BUCKET} \
             --region ${AWS_REGION} \
             --output-template-file ${{ env.STACK_NAME }}-packaged-testing.yaml
 
