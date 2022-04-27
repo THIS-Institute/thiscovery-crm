@@ -36,7 +36,7 @@ jobs:
           echo "Unit test namespace: ${UNIT_TEST_NAMESPACE}"
           echo "Testing account deployment role: ${TESTING_ACCOUNT_DEPLOYMENT_ROLE}"
           echo "Testing account test role: ${TESTING_ACCOUNT_TEST_ROLE}"
-          echo "STAGING_DEPLOYMENT_ROLE: ${STAGING_DEPLOYMENT_ROLE}"
+          echo "Artifacts bucket: ${ARTIFACTS_BUCKET}"
 
       # Build and deploy to test environment
       - uses: actions/checkout@v2
