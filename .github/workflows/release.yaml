@@ -63,62 +63,21 @@ jobs:
     needs: [build-and-package]
     runs-on: ubuntu-latest
     steps:
-      - uses: THIS-Institute/actions-configure-test-env@v0.9
+      - name: Configure testing environment
+        uses: THIS-Institute/actions-configure-test-env@v0.10
         with:
           afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
-      # Deploy to test environment
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: deploy to test environment
+        uses: ./.github/actions/deploy-stack
         with:
-          python-version: '3.8'
-      - uses: aws-actions/setup-sam@v1
-      - uses: actions/download-artifact@v2
-        with:
-          name: ${{ env.PACKAGED_TEMPLATE }}
+          template_name: ${{ env.PACKAGED_TEMPLATE }}
+          deployment_role: ${{ TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Assume the deployment pipeline user role in testing account
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
-          role-session-name: ${{ env.STACK_NAME }}-release-deployment
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Deploy using thiscovery script
-        run: |
-          python actions_deploy.py
-
-      # Assume the testing role
-      - name: Assume the testing role in testing account
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-            aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-            aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-            aws-region: ${{ env.AWS_REGION }}
-            role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
-            role-session-name: ${{ env.STACK_NAME }}-release-testing
-            role-duration-seconds: 3600
-            role-skip-session-tagging: true
-
-      # Add src to PYTHONPATH to resolve imports
-      - name: Set pythonpath
-        run: |
-          echo "PYTHONPATH=./src" >> $GITHUB_ENV
-
-      # Run unit tests
-      - name: Run unit tests
-        run: |
-          python -m unittest discover -s ./tests/unit_tests -t ./tests/unit_tests
+      - name: Run tests
+        uses: ./.github/actions/run-unittests
 
   deploy-staging:
     name: Deploy to staging

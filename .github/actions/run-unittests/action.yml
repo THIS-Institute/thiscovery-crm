@@ -1,0 +1,26 @@
+name: 'Run unittests'
+description: 'Runs thiscovery-crm unittests'
+runs:
+  using: "composite"
+  steps:
+    - name: Assume the testing role in testing account
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ env.TESTING_ACCOUNT_TEST_ROLE }}
+        role-session-name: ${{ env.STACK_NAME }}-testing
+        role-duration-seconds: 3600
+        role-skip-session-tagging: true
+
+    # Add src to PYTHONPATH to resolve imports
+    - name: Set pythonpath
+      shell: bash
+      run: |
+        echo "PYTHONPATH=./src" >> $GITHUB_ENV
+
+    - name: Run unit tests
+      shell: bash
+      run: |
+        python -m unittest discover -s ./tests/unit_tests -t ./tests/unit_tests
