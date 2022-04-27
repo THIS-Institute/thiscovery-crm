@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - '4534-*'
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
