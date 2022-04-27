@@ -100,7 +100,7 @@ jobs:
         uses: ./.github/actions/deploy-stack
         with:
           template_name: ${{ env.PACKAGED_TEMPLATE }}
-          deployment_role: ${{ TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
+          deployment_role: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
 
       # Currently, this step has to be done in the workflow rather than composite action due to this issue: https://github.com/actions/runner/issues/789
       - name: Assume the testing role in testing account
