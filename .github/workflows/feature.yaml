@@ -21,9 +21,12 @@ jobs:
     name: Test on AWS
     runs-on: ubuntu-latest
     steps:
-      - uses: THIS-Institute/actions-configure-test-env@v0.2
+      - uses: THIS-Institute/actions-configure-test-env@v0.3
         with:
           actor: ${{ github.actor }}
+          afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
+          sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
+          amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
       # Todo: it would be nice to abort the workflow here if test environment could not be set (e.g. actor is unknown)
       - name: DEBUG STEP - check that test environment is set correctly
