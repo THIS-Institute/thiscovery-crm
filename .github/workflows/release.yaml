@@ -25,7 +25,7 @@ jobs:
           echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
           echo "PROD_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
 
-      - uses: THIS-Institute/actions-configure-test-env@v0.7
+      - uses: THIS-Institute/actions-configure-test-env@v0.9
         with:
           afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
@@ -34,130 +34,40 @@ jobs:
       - name: Build
         uses: ./.github/actions/build-stack
 
-      # Testing packaging
-      - name: Upload artifacts to testing artifact bucket
-        run: |
-          sam package \
-            --debug \
-            --s3-bucket ${ARTIFACTS_BUCKET} \
-            --region ${AWS_REGION} \
-            --output-template-file ${{ env.STACK_NAME }}-packaged-testing.yaml
-
-      - uses: actions/upload-artifact@v2
+      - name: Package for testing env
+        uses: ./.github/actions/package
         with:
-          name: ${{ env.STACK_NAME }}-packaged-testing.yaml
-          path: ${{ env.STACK_NAME }}-packaged-testing.yaml
+          from_env: ${{ env.AWS_TEST_ENV }}
+          to_env: ${{ env.AWS_TEST_ENV }}
+          deployment_role: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
+          artifacts_bucket: ${{ env.ARTIFACTS_BUCKET }}
 
-      # Staging packaging
-      - name: Replace environment name in built template
-        run: |
-          sed -i 's/${{ env.AWS_TEST_ENV }}/staging/' .aws-sam/build/template.yaml
-
-      - name: DEBUG STEP - check staging template
-        run: |
-          cat .aws-sam/build/template.yaml
-
-      - name: Assume the deployment pipeline user role in staging
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Package for staging
+        uses: ./.github/actions/package
         with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.STAGING_DEPLOYMENT_ROLE }}
-          role-session-name: ${{ env.STACK_NAME }}-staging-packaging
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
+          from_env: ${{ env.AWS_TEST_ENV }}
+          to_env: staging
+          deployment_role: ${{ env.STAGING_DEPLOYMENT_ROLE }}
+          artifacts_bucket: ${{ env.STAGING_ARTIFACTS_BUCKET }}
 
-      - name: Upload artifacts to staging artifact bucket
-        run: |
-          sam package \
-            --debug \
-            --s3-bucket ${STAGING_ARTIFACTS_BUCKET} \
-            --region ${AWS_REGION} \
-            --output-template-file ${{ env.STACK_NAME }}-packaged-staging.yaml
-
-      - uses: actions/upload-artifact@v2
+      - name: Package for production
+        uses: ./.github/actions/package
         with:
-          name: ${{ env.STACK_NAME }}-packaged-staging.yaml
-          path: ${{ env.STACK_NAME }}-packaged-staging.yaml
-
-      # Production packaging
-      - name: Replace environment name in built template
-        run: |
-          sed -i 's/staging/prod/' .aws-sam/build/template.yaml
-
-      - name: DEBUG STEP - check prod template
-        run: |
-          cat .aws-sam/build/template.yaml
-
-      - name: Assume the prod pipeline user role
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.PROD_DEPLOYMENT_ROLE }}
-          role-session-name: ${{ env.STACK_NAME }}-prod-packaging
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Upload artifacts to production artifact buckets
-        run: |
-          sam package \
-            --debug \
-            --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
-            --region ${AWS_REGION} \
-            --output-template-file ${{ env.STACK_NAME }}-packaged-prod.yaml
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.STACK_NAME }}-packaged-prod.yaml
-          path: ${{ env.STACK_NAME }}-packaged-prod.yaml
+          from_env: staging
+          to_env: prod
+          deployment_role: ${{ env.PROD_DEPLOYMENT_ROLE }}
+          artifacts_bucket: ${{ env.PROD_ARTIFACTS_BUCKET }}
 
   test:
     name: Test on AWS
     needs: [build-and-package]
     runs-on: ubuntu-latest
     steps:
-      # Configure target test account based on pull request actor
-      - if: ${{ github.actor == 'afs25' }}
-        name: Sets env vars for afs25
-        run: |
-          echo "AWS_TEST_ACCOUNT=${{ secrets.AFS25_AWS_ACCOUNT }}" >> $GITHUB_ENV
-          echo "AWS_TEST_ENV=test-afs25" >> $GITHUB_ENV
-
-      - if: ${{ github.actor == 'sophiemachin' }}
-        name: Sets env vars for sem86
-        run: |
-          echo "AWS_TEST_ACCOUNT=${{ secrets.SEM86_AWS_ACCOUNT }}" >> $GITHUB_ENV
-          echo "AWS_TEST_ENV=test-sem86" >> $GITHUB_ENV
-
-      - if: ${{ github.actor == 'this-andy' }}
-        name: Sets env vars for amp205
-        run: |
-          echo "AWS_TEST_ACCOUNT=${{ secrets.AMP205_AWS_ACCOUNT }}" >> $GITHUB_ENV
-          echo "AWS_TEST_ENV=test-amp205" >> $GITHUB_ENV
-
-      - name: Set additional test env variables
-        run: |
-          echo "SECRETS_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
-          echo "UNIT_TEST_NAMESPACE=/${AWS_TEST_ENV}/" >> $GITHUB_ENV
-          echo "TEST_ON_AWS=True" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_DEPLOYMENT_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
-          echo "TESTING_ACCOUNT_TEST_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-dev-setup-${AWS_TEST_ENV}-${AWS_REGION}-TestingExec" >> $GITHUB_ENV
-          echo "ARTIFACTS_BUCKET=thiscovery-devops-${AWS_TEST_ENV}-deployment-artifacts" >> $GITHUB_ENV
-          echo "CLOUDFORMATION_EXECUTION_ROLE=arn:aws:iam::${AWS_TEST_ACCOUNT}:role/thiscovery-devops-${AWS_TEST_ENV}-${AWS_REGION}-CFExec" >> $GITHUB_ENV
-          echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
-          echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-testing.yaml" >> $GITHUB_ENV
-
-      - name: DEBUG STEP - check that test environment is set correctly
-        run: |
-          echo "Aws test account: ${AWS_TEST_ACCOUNT}"
-          echo "Aws test env: ${AWS_TEST_ENV}"
-          echo "Secrets namespace: ${SECRETS_NAMESPACE}"
-          echo "Unit test namespace: ${UNIT_TEST_NAMESPACE}"
-          echo "Testing account deployment role: ${TESTING_ACCOUNT_DEPLOYMENT_ROLE}"
-          echo "Testing account test role: ${TESTING_ACCOUNT_TEST_ROLE}"
+      - uses: THIS-Institute/actions-configure-test-env@v0.9
+        with:
+          afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
+          sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
+          amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
       # Deploy to test environment
       - uses: actions/checkout@v2
