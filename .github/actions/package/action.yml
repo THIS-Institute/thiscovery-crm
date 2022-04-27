@@ -1,0 +1,47 @@
+name: 'Package thiscovery'
+description: 'Packages thiscovery stack and uploads deployment artifacts to S3'
+inputs:
+  from_env:
+    description: 'Environment currently set in build template'
+    required: true
+  to_env:
+    description: 'Environment to be set in packaged template'
+    required: true
+  deployment_role:
+    description: 'AWS role to assume'
+    required: true
+  artifacts_bucket:
+    description: 'S3 bucket to upload artifacts to'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Replace environment name in built template
+      shell: bash
+      run: |
+        sed -i 's/${{ inputs.from_env }}/${{ inputs.to_env }}/' .aws-sam/build/template.yaml
+
+    - name: Assume the deployment pipeline user role
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ inputs.deployment_role }}
+        role-session-name: ${{ env.STACK_NAME }}-${{ inputs.to_env }}-packaging
+        role-duration-seconds: 3600
+        role-skip-session-tagging: true
+
+    - name: Upload artifacts to artifact bucket
+      shell: bash
+      run: |
+        sam package \
+          --debug \
+          --s3-bucket ${{ inputs.artifacts_bucket }} \
+          --region ${AWS_REGION} \
+          --output-template-file ${{ env.STACK_NAME }}-packaged-${{ inputs.to_env }}.yaml
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.STACK_NAME }}-packaged-${{ inputs.to_env }}.yaml
+        path: ${{ env.STACK_NAME }}-packaged-${{ inputs.to_env }}.yaml
