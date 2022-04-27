@@ -4,6 +4,10 @@ on:
   pull_request:
     branches:
       - 'master'
+  push:
+    branches:
+      - '4534-*'
+
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -18,41 +22,11 @@ jobs:
     name: Test on AWS
     runs-on: ubuntu-latest
     steps:
-      - uses: THIS-Institute/actions-configure-test-env@v0.7
+      - uses: THIS-Institute/actions-configure-test-env@v0.8
         with:
           afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
-
-      # Build and deploy to test environment
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-      - uses: aws-actions/setup-sam@v1
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Assume the deployment pipeline user role in testing account
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
-          role-session-name: feature-deployment
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Build resources using thiscovery deployer
-        run: |
-          python actions_build.py
-
-      - name: DEBUG STEP - check parsed template
-        run: |
-          cat .thiscovery/template.yaml
 
       # Packaging
       - name: Upload artifacts to testing artifact bucket

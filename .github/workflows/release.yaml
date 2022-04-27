@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - 'master'
-      - '4534-*'
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -21,25 +20,16 @@ jobs:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
+      - name: Set staging and prod env variables
+        run: |
+          echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
+          echo "PROD_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
+
       - uses: THIS-Institute/actions-configure-test-env@v0.7
         with:
           afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
-
-      - name: Set additional env variables
-        run: |
-          echo "STAGING_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.STAGING_AWS_ACCOUNT }}:role/thiscovery-devops-staging-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
-          echo "PROD_DEPLOYMENT_ROLE=arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT }}:role/thiscovery-devops-prod-${AWS_REGION}-PipelineExec" >> $GITHUB_ENV
-
-      - name: DEBUG STEP - check that test environment is set correctly
-        run: |
-          echo "Aws test account: ${AWS_TEST_ACCOUNT}"
-          echo "Aws test env: ${AWS_TEST_ENV}"
-          echo "Secrets namespace: ${SECRETS_NAMESPACE}"
-          echo "Unit test namespace: ${UNIT_TEST_NAMESPACE}"
-          echo "Testing account deployment role: ${TESTING_ACCOUNT_DEPLOYMENT_ROLE}"
-          echo "Testing account test role: ${TESTING_ACCOUNT_TEST_ROLE}"
 
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
