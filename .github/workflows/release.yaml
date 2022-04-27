@@ -33,6 +33,8 @@ jobs:
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
+      - uses: actions/checkout@v3
+
       - name: Build
         uses: ./.github/actions/build-stack
 
