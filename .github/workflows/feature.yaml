@@ -22,11 +22,14 @@ jobs:
     name: Test on AWS
     runs-on: ubuntu-latest
     steps:
-      - uses: THIS-Institute/actions-configure-test-env@v0.8
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/configure-test-env
         with:
           afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
+
+      - uses: ./.github/actions/build-stack
 
       # Packaging
       - name: Upload artifacts to testing artifact bucket
