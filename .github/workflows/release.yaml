@@ -98,6 +98,8 @@ jobs:
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
+      - uses: actions/checkout@v3
+
       - name: deploy to test environment
         uses: ./.github/actions/deploy-stack
         with:
@@ -146,7 +148,7 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: deploy to staging
         uses: ./.github/actions/deploy-stack
@@ -181,7 +183,7 @@ jobs:
           role-duration-seconds: 3600
           role-skip-session-tagging: true
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: deploy to production
         uses: ./.github/actions/deploy-stack
