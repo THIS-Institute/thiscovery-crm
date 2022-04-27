@@ -94,34 +94,13 @@ jobs:
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
           echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-staging.yaml" >> $GITHUB_ENV
 
-      # Build and deploy to staging
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-      - uses: aws-actions/setup-sam@v1
-      - uses: actions/download-artifact@v2
-        with:
-          name: ${{ env.PACKAGED_TEMPLATE }}
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Assume the deployment pipeline user role in staging
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: deploy to staging
+        uses: ./.github/actions/deploy-stack
         with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.STAGING_DEPLOYMENT_ROLE }}
-          role-session-name: ${{ env.STACK_NAME }}-staging-deployment
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Execute thiscovery deployment script
-        run: |
-          python actions_deploy.py
+          template_name: ${{ env.PACKAGED_TEMPLATE }}
+          deployment_role: ${{ env.STAGING_DEPLOYMENT_ROLE }}
 
   deploy-production:
     name: Deploy to production
@@ -138,31 +117,10 @@ jobs:
           echo "DEPLOYMENT_METHOD=github_actions" >> $GITHUB_ENV
           echo "PACKAGED_TEMPLATE=${{ env.STACK_NAME }}-packaged-prod.yaml" >> $GITHUB_ENV
 
-      # Build and deploy to production
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-      - uses: aws-actions/setup-sam@v1
-      - uses: actions/download-artifact@v2
-        with:
-          name: ${{ env.PACKAGED_TEMPLATE }}
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Assume the deployment pipeline user role in production
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: deploy to production
+        uses: ./.github/actions/deploy-stack
         with:
-          aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.PROD_DEPLOYMENT_ROLE }}
-          role-session-name: ${{ env.STACK_NAME }}-production-deployment
-          role-duration-seconds: 3600
-          role-skip-session-tagging: true
-
-      - name: Execute thiscovery deployment script
-        run: |
-          python actions_deploy.py
+          template_name: ${{ env.PACKAGED_TEMPLATE }}
+          deployment_role: ${{ env.PROD_DEPLOYMENT_ROLE }}
