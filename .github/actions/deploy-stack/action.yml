@@ -6,7 +6,7 @@ inputs:
     required: true
   deployment_role:
     description: 'AWS role to assume'
-    required: true
+    required: false
 runs:
   using: "composite"
   steps:
@@ -24,16 +24,16 @@ runs:
       run: |
         pip install -r requirements.txt
 
-    - name: Assume the deployment pipeline user role
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-to-assume: ${{ inputs.deployment_role }}
-        role-session-name: ${{ env.STACK_NAME }}-deployment
-        role-duration-seconds: 3600
-        role-skip-session-tagging: true
+#    - name: Assume the deployment pipeline user role
+#      uses: aws-actions/configure-aws-credentials@v1
+#      with:
+#        aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+#        aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+#        aws-region: ${{ env.AWS_REGION }}
+#        role-to-assume: ${{ inputs.deployment_role }}
+#        role-session-name: ${{ env.STACK_NAME }}-deployment
+#        role-duration-seconds: 3600
+#        role-skip-session-tagging: true
 
     - name: Deploy using thiscovery script
       shell: bash

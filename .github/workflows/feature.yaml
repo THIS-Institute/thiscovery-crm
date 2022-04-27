@@ -17,6 +17,7 @@ env:
   AWS_REGION: eu-west-1
   STACK_NAME: thiscovery-crm
 
+
 jobs:
   test:
     name: Test on AWS
@@ -46,6 +47,7 @@ jobs:
         run: |
           python actions_deploy.py
 
+      # Currently, this step has to be done in the workflow rather than composite action due to this issue: https://github.com/actions/runner/issues/789
       - name: Assume the testing role in testing account
         uses: aws-actions/configure-aws-credentials@v1
         with:
