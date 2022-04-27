@@ -21,7 +21,7 @@ jobs:
     name: Test on AWS
     runs-on: ubuntu-latest
     steps:
-      - uses: THIS-Institute/actions-configure-test-env@v0.4
+      - uses: THIS-Institute/actions-configure-test-env@v0.5
         with:
           afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
