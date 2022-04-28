@@ -25,7 +25,7 @@ runs:
         role-duration-seconds: 3600
         role-skip-session-tagging: true
 
-    - name: Build resources using thiscovery deployer
+    - name: Build resources using thiscovery cli
       shell: bash
       run: |
-        python actions_build.py
+        thiscovery build

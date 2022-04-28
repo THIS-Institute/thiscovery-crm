@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - 'master'
+  push:
+    branches:
+      - '4549-*'
 
 
 env:
@@ -42,7 +45,7 @@ jobs:
 
       - name: Execute thiscovery deployment script
         run: |
-          python actions_deploy.py
+          thiscovery deploy ${{ env.STACK_NAME }}
 
       # Currently, this step has to be done in the workflow rather than composite action due to this issue: https://github.com/actions/runner/issues/789
       - name: Assume the testing role in testing account

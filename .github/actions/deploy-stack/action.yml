@@ -38,4 +38,4 @@ runs:
     - name: Deploy using thiscovery script
       shell: bash
       run: |
-        python actions_deploy.py
+        thiscovery deploy ${{ env.STACK_NAME }}
