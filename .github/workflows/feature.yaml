@@ -43,7 +43,7 @@ jobs:
           deployment_role: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
           artifacts_bucket: ${{ env.ARTIFACTS_BUCKET }}
 
-      - name: Execute thiscovery deployment script
+      - name: Execute thiscovery deployment via cli
         run: |
           thiscovery deploy ${{ env.STACK_NAME }}
 
