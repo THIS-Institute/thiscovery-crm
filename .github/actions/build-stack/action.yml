@@ -1,0 +1,31 @@
+name: 'Build thiscovery'
+description: 'Builds thiscovery stack using test account credentials'
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - uses: aws-actions/setup-sam@v1
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install -r requirements.txt
+
+    - name: Assume the deployment pipeline user role in testing account
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ env.PIPELINE_USER_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.PIPELINE_USER_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
+        role-session-name: ${{ env.STACK_NAME }}-testing-packaging
+        role-duration-seconds: 3600
+        role-skip-session-tagging: true
+
+    - name: Build resources using thiscovery cli
+      shell: bash
+      run: |
+        thiscovery build
