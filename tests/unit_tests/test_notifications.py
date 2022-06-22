@@ -132,7 +132,9 @@ class TestNotifications(test_tools.BaseTestCase):
         cls.hs_client = HubSpotClient(stack_name=const.STACK_NAME)
         # NOTE: test_11_send_email_user_without_hubspot_id in test_transactional_email.py
         # requires a test user without a HubSpot id, which is why I commented out
-        # the lines below (they generate HubSpot ids for all test users).
+        # the lines below (they generate HubSpot ids for all test users). Also note
+        # that the lines below require changes to thiscovery-dev-tools made on revision
+        # fe1d3f244a322fa76bd4fad5ef287f09b21756a7, which have now been reverted.
 
         # user_data_csv = os.path.join(test_data.__path__[0], "user_data_PSFU.csv")
         # test_utils.post_sample_users_to_crm(user_data_csv, cls.hs_client)
