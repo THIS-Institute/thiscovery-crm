@@ -28,19 +28,20 @@ from common.constants import STACK_NAME
 
 @utils.lambda_wrapper
 def record_user_registration_event(event, context):
-    user_data = event["details"]["detail"]["data"]["details"]["body"]["user_metadata"]
+    user_data = event["detail"]["data"]["details"]["body"]
 
     details = {
-        "email": event["user_name"],
-        "created": event["created"],
-        "first_name": user_data["first_name"],
-        "last_name": user_data["last_name"],
-        "country_name": user_data["country"],
-        "id": user_data["citsci_uuid"],
+        "email": user_data["email"],
+        "event_time": event["time"],
+        "first_name": user_data["user_metadata"]["first_name"],
+        "last_name": user_data["user_metadata"]["last_name"],
+        "country_name": user_data["user_metadata"]["country"],
+        "id": user_data["user_metadata"]["citsci_uuid"],
     }
 
     notify_new_user_registration(
-        details, event["id"], stack_name=STACK_NAME
+        details, event["id"],
+        # stack_name=STACK_NAME  # save notification in thiscovery-core's table until processing is migrated to this stack
     )
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
