@@ -40,8 +40,7 @@ def record_user_registration_event(event, context):
     }
 
     notify_new_user_registration(
-        details, event["id"],
-        # stack_name=STACK_NAME  # save notification in thiscovery-core's table until processing is migrated to this stack
+        details, event["id"], stack_name=STACK_NAME
     )
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}

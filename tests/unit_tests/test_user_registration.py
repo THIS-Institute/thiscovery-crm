@@ -77,7 +77,7 @@ class TestUserRegistration(test_tools.BaseTestCase):
     def setUpClass(cls):
         super().setUpClass()
         notif.delete_all_notifications(
-            # stack_name=const.STACK_NAME  # notification in thiscovery-core's table until processing is migrated to this stack
+            stack_name=const.STACK_NAME
         )
 
     def test_record_user_registration_ok(self):
@@ -91,7 +91,7 @@ class TestUserRegistration(test_tools.BaseTestCase):
         else:
             ur.record_user_registration_event(SUCCESSFUL_REGISTRATION, None)
         notifications = notif.get_notifications(
-            # stack_name=const.STACK_NAME  # notification in thiscovery-core's table until processing is migrated to this stack
+            stack_name=const.STACK_NAME
         )
         self.assertEqual(1, len(notifications))
 
