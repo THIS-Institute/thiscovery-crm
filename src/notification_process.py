@@ -17,24 +17,13 @@
 #
 
 import http
-import sys
-import json
+import thiscovery_lib.utilities as utils
 import traceback
 from datetime import datetime, timedelta
 from dateutil import parser, tz
-
-import thiscovery_lib.notifications as c_notif
-import thiscovery_lib.utilities as utils
+from enum import Enum
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 from thiscovery_lib.hubspot_utilities import HubSpotClient
-from thiscovery_lib.notifications import (
-    get_notifications,
-    NotificationType,
-    NotificationStatus,
-    NotificationAttributes,
-    mark_notification_processed,
-    mark_notification_failure,
-)
 from thiscovery_lib.utilities import (
     get_logger,
     new_correlation_id,
@@ -45,10 +34,189 @@ from thiscovery_lib.utilities import (
 import common.constants as const
 
 
+NOTIFICATION_TABLE_NAME = "notifications"
+MAX_RETRIES = 2
+
+
+class NotificationType(Enum):
+    USER_REGISTRATION = "user-registration"
+    TASK_SIGNUP = "task-signup"
+    USER_LOGIN = "user-login"
+    TRANSACTIONAL_EMAIL = "transactional-email"
+
+
+class NotificationStatus(Enum):
+    NEW = "new"
+    PROCESSED = "processed"
+    RETRYING = "retrying"
+    DLQ = "dlq"
+
+
+class NotificationAttributes(Enum):
+    STATUS = "processing_status"
+    FAIL_COUNT = "processing_fail_count"
+    ERROR_MESSAGE = "processing_error_message"
+    TYPE = "type"
+
+
+def get_notifications_to_process(correlation_id=None, stack_name=const.STACK_NAME):
+    ddb = Dynamodb(
+        stack_name=stack_name,
+        correlation_id=correlation_id,
+    )
+    notifications_to_process = list()
+    for status in [NotificationStatus.NEW.value, NotificationStatus.RETRYING.value]:
+        notifications_to_process += ddb.query(
+            table_name=NOTIFICATION_TABLE_NAME,
+            IndexName="processing-status-index",
+            KeyConditionExpression="processing_status = :status",
+            ExpressionAttributeValues={
+                ":status": status,
+            },
+        )
+    return notifications_to_process
+
+
+def get_notifications_to_clear(
+    datetime_threshold, correlation_id=None, stack_name=const.STACK_NAME
+):
+    ddb = Dynamodb(stack_name=stack_name, correlation_id=correlation_id)
+    return ddb.query(
+        table_name=NOTIFICATION_TABLE_NAME,
+        IndexName="processing-status-index",
+        KeyConditionExpression="processing_status = :status " "AND created < :t1",
+        ExpressionAttributeValues={
+            ":status": NotificationStatus.PROCESSED.value,
+            ":t1": str(datetime_threshold),
+        },
+        ScanIndexForward=False,
+    )
+
+
+def get_notifications(
+    filter_attr_name: str = None,
+    filter_attr_values=None,
+    correlation_id=None,
+    stack_name=const.STACK_NAME,
+):
+    ddb = Dynamodb(stack_name=stack_name, correlation_id=correlation_id)
+    notifications = ddb.scan(
+        NOTIFICATION_TABLE_NAME, filter_attr_name, filter_attr_values
+    )
+    return notifications
+
+
+def delete_all_notifications(stack_name=const.STACK_NAME):
+    ddb = Dynamodb(stack_name=stack_name)
+    ddb.delete_all(NOTIFICATION_TABLE_NAME)
+
+
+def create_notification(label: str):
+    notification_item = {
+        NotificationAttributes.STATUS.value: NotificationStatus.NEW.value,
+        "label": label,
+    }
+    return notification_item
+
+
+def save_notification(
+    key,
+    task_type,
+    task_signup,
+    notification_item,
+    correlation_id,
+    stack_name=const.STACK_NAME,
+):
+    ddb = Dynamodb(
+        stack_name=stack_name,
+        correlation_id=correlation_id,
+    )
+    ddb.put_item(
+        NOTIFICATION_TABLE_NAME,
+        key,
+        task_type,
+        task_signup,
+        notification_item,
+        False,
+        correlation_id,
+    )
+
+
+def get_fail_count(notification):
+    if NotificationAttributes.FAIL_COUNT.value in notification:
+        return int(notification[NotificationAttributes.FAIL_COUNT.value])
+    else:
+        return 0
+
+
+def set_fail_count(notification, new_value):
+    notification[NotificationAttributes.FAIL_COUNT.value] = new_value
+
+
+def mark_notification_processed(
+    notification, correlation_id, stack_name=const.STACK_NAME
+):
+    notification_id = notification["id"]
+    notification_updates = {
+        NotificationAttributes.STATUS.value: NotificationStatus.PROCESSED.value
+    }
+    ddb = Dynamodb(stack_name=stack_name)
+    return ddb.update_item(
+        NOTIFICATION_TABLE_NAME, notification_id, notification_updates, correlation_id
+    )
+
+
+def mark_notification_failure(
+    notification, error_message, correlation_id, stack_name=const.STACK_NAME
+):
+    def update_notification_item(status_, fail_count_, error_message_=error_message):
+        notification_updates = {
+            NotificationAttributes.STATUS.value: status_,
+            NotificationAttributes.FAIL_COUNT.value: fail_count_,
+            NotificationAttributes.ERROR_MESSAGE.value: error_message_,
+        }
+        ddb = Dynamodb(stack_name=stack_name)
+        return ddb.update_item(
+            NOTIFICATION_TABLE_NAME,
+            notification_id,
+            notification_updates,
+            correlation_id,
+        )
+
+    logger = utils.get_logger()
+    logger.debug(
+        f"Error processing notification",
+        extra={
+            "error_message": error_message,
+            "notification": notification,
+            "correlation_id": correlation_id,
+        },
+    )
+    notification_id = notification["id"]
+    fail_count = get_fail_count(notification) + 1
+    set_fail_count(notification, fail_count)
+    if fail_count > MAX_RETRIES:
+        logger.error(
+            f"Failed to process notification after {MAX_RETRIES} attempts",
+            extra={
+                "error_message": error_message,
+                "notification": notification,
+                "correlation_id": correlation_id,
+            },
+        )
+        status = NotificationStatus.DLQ.value
+        update_notification_item(status, fail_count)
+        errorjson = {"fail_count": fail_count, **notification}
+        raise utils.DetailedValueError(f"Notification processing failed", errorjson)
+    else:
+        status = NotificationStatus.RETRYING.value
+        return update_notification_item(status, fail_count)
+
+
 # region processing
 def process_notifications(event, context):
     logger = get_logger()
-    notifications = c_notif.get_notifications_to_process(stack_name=const.STACK_NAME)
+    notifications = get_notifications_to_process(stack_name=const.STACK_NAME)
     logger.info("process_notifications", extra={"count": str(len(notifications))})
 
     # note that we need to process all registrations first, then do task signups (otherwise we might try to process a signup for someone not yet registered)
@@ -83,8 +251,7 @@ def process_notifications(event, context):
         process_user_login(login_notification)
 
     for email in transactional_emails:
-        pass
-        # process_transactional_email(email)
+        process_transactional_email(email)
 
 
 def process_user_login(notification):
@@ -121,28 +288,28 @@ def process_user_login(notification):
         return posting_result, marking_result
 
 
-# def process_transactional_email(notification, mock_server=False):
-#     logger = get_logger()
-#     correlation_id = new_correlation_id()
-#     logger.info('Processing transactional email', extra={'notification': notification, 'correlation_id': correlation_id})
-#     posting_result = None
-#     marking_result = None
-#     try:
-#         from transactional_email import TransactionalEmail
-#         email = TransactionalEmail(
-#             email_dict=notification['details'],
-#             send_id=notification['id'],
-#             correlation_id=correlation_id
-#         )
-#         posting_result = email.send(mock_server=mock_server)
-#         logger.debug('Response from HubSpot API', extra={'posting_result': posting_result, 'correlation_id': correlation_id})
-#         if posting_result.status_code == http.HTTPStatus.OK:
-#             marking_result = mark_notification_processed(notification, correlation_id)
-#     except Exception as ex:
-#         error_message = str(ex)
-#         marking_result = mark_notification_failure(notification, error_message, correlation_id)
-#     finally:
-#         return posting_result, marking_result
+def process_transactional_email(notification, mock_server=False):
+    logger = get_logger()
+    correlation_id = new_correlation_id()
+    logger.info('Processing transactional email', extra={'notification': notification, 'correlation_id': correlation_id})
+    posting_result = None
+    marking_result = None
+    try:
+        from transactional_email import TransactionalEmail
+        email = TransactionalEmail(
+            email_dict=notification['details'],
+            send_id=notification['id'],
+            correlation_id=correlation_id
+        )
+        posting_result = email.send(mock_server=mock_server)
+        logger.debug('Response from HubSpot API', extra={'posting_result': posting_result, 'correlation_id': correlation_id})
+        if posting_result.status_code == http.HTTPStatus.OK:
+            marking_result = mark_notification_processed(notification, correlation_id)
+    except Exception as ex:
+        error_message = str(ex)
+        marking_result = mark_notification_failure(notification, error_message, correlation_id)
+    finally:
+        return posting_result, marking_result
 # endregion
 
 
@@ -153,7 +320,7 @@ def clear_notification_queue(event, context):
     correlation_id = event["correlation_id"]
     seven_days_ago = now_with_tz() - timedelta(days=7)
     # processed_notifications = get_notifications('processing_status', ['processed'])
-    processed_notifications = c_notif.get_notifications_to_clear(
+    processed_notifications = get_notifications_to_clear(
         datetime_threshold=seven_days_ago, stack_name=const.STACK_NAME
     )
     notifications_to_delete = [
@@ -169,7 +336,7 @@ def clear_notification_queue(event, context):
     ddb_client = Dynamodb(stack_name=const.STACK_NAME)
     for n in notifications_to_delete:
         response = ddb_client.delete_item(
-            c_notif.NOTIFICATION_TABLE_NAME, n["id"], correlation_id=correlation_id
+            NOTIFICATION_TABLE_NAME, n["id"], correlation_id=correlation_id
         )
         if response["ResponseMetadata"]["HTTPStatusCode"] == http.HTTPStatus.OK:
             deleted_notifications.append(n)
@@ -189,6 +356,4 @@ def clear_notification_queue(event, context):
                 f"Failed to delete notification {n}; received response: {response}"
             )
     return deleted_notifications
-
-
 # endregion

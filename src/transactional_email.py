@@ -15,18 +15,17 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
-import json
 import validators
 from http import HTTPStatus
+from typing import Dict
 
 import thiscovery_lib.hubspot_utilities as hs
 import thiscovery_lib.utilities as utils
 import notification_process as np
-# import project as p
-# import user as u
 from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.dynamodb_utilities import Dynamodb
-from thiscovery_lib.notification_send import new_transactional_email_notification
+
+from notification_send import new_transactional_email_notification
 
 
 class TransactionalEmail:
@@ -42,7 +41,7 @@ class TransactionalEmail:
                     notification table.
             correlation_id:
         """
-        self.send_id = send_id
+        self.send_id = str(send_id)
         self.template_name = email_dict.get("template_name")
         self.to_recipient_id = email_dict.get("to_recipient_id")
         self.to_recipient_email = email_dict.get("to_recipient_email")
@@ -177,26 +176,31 @@ class TransactionalEmail:
                         )
         return True
 
-    def _get_project(self):
+    def _get_project(self) -> Dict[str, str]:
+        """
+        Resolves the project name of the project task id provided in email_dict.
+        """
         pt_id_name = "project_task_id"
         self.lookup_properties.append(pt_id_name)
         pt_id = self.email_dict["custom_properties"].get(pt_id_name)
-        self.project = p.get_project_task_with_project_attributes(
-            pt_id, correlation_id=self.correlation_id
-        )[0]
-        return self.project
+        projects = self.core_client.get_projects()
+        for p in projects:
+            for t in p["tasks"]:
+                if t["id"] == pt_id:
+                    self.project = {"project_name": p["name"]}
+                    return self.project
 
     def _get_user(self):
         try:
             self.user = self.core_client.get_user_by_user_id(
-                self.to_recipient_id, correlation_id=self.correlation_id
-            )[0]
-        except IndexError:
+                self.to_recipient_id
+            )
+        except AssertionError:
             try:
                 self.user = self.core_client.get_user_by_anon_project_specific_user_id(
-                    self.to_recipient_id, correlation_id=self.correlation_id
-                )[0]
-            except IndexError:
+                    self.to_recipient_id
+                )
+            except AssertionError:
                 raise utils.ObjectDoesNotExistError(
                     "Recipient id does not match any known user_id or anon_project_specific_user_id",
                     details={
@@ -264,24 +268,19 @@ class TransactionalEmail:
 
 
 @utils.lambda_wrapper
-@utils.api_error_handler
-def send_transactional_email_api(event, context):
+# @utils.api_error_handler
+def send_transactional_email(event, context):
+    """
+    Processes transactional_email events
+    """
     logger = event["logger"]
     correlation_id = event["correlation_id"]
-
-    email_dict = json.loads(event["body"])
-    logger.info(
-        "API call",
-        extra={
-            "email_dict": email_dict,
-            "correlation_id": correlation_id,
-            "event": event,
-        },
-    )
+    email_dict = event["detail"]
     alarm_test = email_dict.get("brew_coffee")
     if alarm_test:
         raise utils.DeliberateError("Coffee is not available", details={})
     new_transactional_email_notification(email_dict, correlation_id)
+    # todo: decouple notification creation from processing by posting an event that triggers processing rather than calling processing method directly
     np.process_notifications(event, context)
     return {
         "statusCode": HTTPStatus.NO_CONTENT,
