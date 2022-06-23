@@ -25,6 +25,7 @@ import notification_process as np
 from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 
+import common.constants as const
 from notification_send import new_transactional_email_notification
 
 
@@ -60,7 +61,7 @@ class TransactionalEmail:
         self.logger = utils.get_logger()
         self.correlation_id = str(correlation_id)
         self.core_client = CoreApiClient(correlation_id=correlation_id)
-        self.ddb_client = Dynamodb(correlation_id=correlation_id)
+        self.ddb_client = Dynamodb(correlation_id=correlation_id, stack_name=const.STACK_NAME)
         self.ss_client = hs.SingleSendClient(correlation_id=correlation_id)
         self.template = None
         self.user = None
