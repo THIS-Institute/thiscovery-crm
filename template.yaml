@@ -45,12 +45,17 @@ Resources:
       Handler: notification_process.process_notifications
       Policies:
         - AWSXrayWriteOnlyAccess
+        - AWSLambdaENIManagementAccess
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref tokens
+        - DynamoDBCrudPolicy:
+            TableName: !Ref lookups
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HubspotEmailTemplates
       Events:
         Timer9:
           Type: Schedule
@@ -64,6 +69,10 @@ Resources:
           TABLE_ARN: !GetAtt notifications.Arn
           TABLE_NAME_2: !Ref tokens
           TABLE_ARN_2: !GetAtt tokens.Arn
+          TABLE_NAME_3: !Ref lookups
+          TABLE_ARN_3: !GetAtt lookups.Arn
+          TABLE_NAME_4: !Ref HubspotEmailTemplates
+          TABLE_ARN_4: !GetAtt HubspotEmailTemplates.Arn
     Metadata:
       StackeryName: process-notifications
 
