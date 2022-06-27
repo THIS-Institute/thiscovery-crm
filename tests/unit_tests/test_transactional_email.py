@@ -225,7 +225,7 @@ class TestTransactionalEmail(test_tools.BaseTestCase):
             aws_eb_event=test_event,
             lambda_name="SendTransactionalEmail",
             stack_name=const.STACK_NAME,
-            aws_processing_delay=5,
+            aws_processing_delay=10,
         )
         self.assertEqual(HTTPStatus.NO_CONTENT, result["statusCode"])
 
