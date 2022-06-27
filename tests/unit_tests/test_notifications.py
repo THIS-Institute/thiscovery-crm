@@ -193,6 +193,7 @@ class TestNotifications(test_tools.BaseTestCase):
         """
         user_json = create_registration_notification()
         notifications = sorted(get_notifications(), key=lambda d: d['created'], reverse=True)
+        self.logger.debug("Notifications", extra={"notifications": notifications})
         notification = notifications[0]  # most recently created notification
         self.assertEqual(user_json["id"], notification["id"])
         self.assertEqual("user-registration", notification["type"])
@@ -299,7 +300,11 @@ class TestNotifications(test_tools.BaseTestCase):
         Tests notification_process.process_user_login
         """
         create_login_notification(TEST_USER_02_JSON)
-        notification = get_notifications()[0]
+        notifications = sorted(get_notifications(), key=lambda d: d['created'], reverse=True)
+        self.logger.debug("Notifications", extra={
+            "notifications": notifications
+        })
+        notification = notifications[0]
         posting_result, marking_result = np.process_user_login(notification)
         self.assertEqual(HTTPStatus.NO_CONTENT, posting_result)
         self.assertEqual(

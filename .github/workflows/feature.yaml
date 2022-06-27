@@ -1,6 +1,9 @@
 name: Feature pipeline
 
 on:
+  push:
+    branches:
+      - 'cicd-*'
   pull_request:
     branches:
       - 'master'
