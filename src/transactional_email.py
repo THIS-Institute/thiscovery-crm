@@ -62,7 +62,7 @@ class TransactionalEmail:
         self.correlation_id = str(correlation_id)
         self.core_client = CoreApiClient(correlation_id=correlation_id)
         self.ddb_client = Dynamodb(correlation_id=correlation_id, stack_name=const.STACK_NAME)
-        self.ss_client = hs.SingleSendClient(correlation_id=correlation_id)
+        self.ss_client = hs.SingleSendClient(correlation_id=correlation_id, stack_name=const.STACK_NAME)
         self.template = None
         self.user = None
         self.project = None
