@@ -192,7 +192,11 @@ class TestNotifications(test_tools.BaseTestCase):
         Tests the notification process associated with a new registration
         """
         user_json = create_registration_notification()
-        notifications = sorted(get_notifications(), key=lambda d: d['created'], reverse=True)
+        notifications = get_notifications()
+        self.logger.debug("notifications pre-sorting", extra={
+            "notifications": notifications
+        })
+        notifications = sorted(notifications, key=lambda d: d['created'], reverse=True)
         self.logger.debug("Sorted notifications", extra={"notifications": notifications})
         notification = notifications[0]  # most recently created notification
         self.assertEqual(user_json["id"], notification["id"])
