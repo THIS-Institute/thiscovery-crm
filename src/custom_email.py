@@ -16,7 +16,8 @@
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
 import thiscovery_lib.utilities as utils
-from thiscovery_lib.core_api_utilities import CoreApiClient
+from http import HTTPStatus
+from thiscovery_lib.eb_utilities import ThiscoveryEvent
 
 
 @utils.lambda_wrapper
@@ -24,7 +25,6 @@ def custom_email(event, context):
     """
     Handles custom email events posted by Qualtrics
     """
-    correlation_id = event['id']
     detail = event['detail']
     try:
         template_name = detail.pop('template_name')
@@ -47,8 +47,16 @@ def custom_email(event, context):
             )
 
     email_dict.update({
+        "template_name": template_name,
         "custom_properties": detail,
     })
-
-    core_api_client = CoreApiClient(correlation_id=correlation_id)
-    return core_api_client.send_transactional_email(template_name=template_name, **email_dict)
+    email_event = ThiscoveryEvent(
+        {
+            "detail-type": "transactional_email",
+            "detail": email_dict,
+        }
+    )
+    email_event.put_event()
+    return {
+        "statusCode": HTTPStatus.NO_CONTENT,
+    }

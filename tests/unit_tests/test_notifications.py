@@ -192,10 +192,12 @@ class TestNotifications(test_tools.BaseTestCase):
         Tests the notification process associated with a new registration
         """
         user_json = create_registration_notification()
-        notifications = sorted(get_notifications(), key=lambda d: d['created'], reverse=True)
-        self.logger.debug("Sorted notifications", extra={"notifications": notifications})
-        notification = notifications[0]  # most recently created notification
-        self.assertEqual(user_json["id"], notification["id"])
+        notifications = get_notifications()
+        notification = None
+        for n in notifications:
+            if n["id"] == user_json["id"]:
+                notification = n
+        self.assertIsNotNone(notification)
         self.assertEqual("user-registration", notification["type"])
         self.assertEqual(user_json["email"], notification["label"])
         self.assertEqual(
@@ -231,10 +233,11 @@ class TestNotifications(test_tools.BaseTestCase):
         """
         ut_json = create_task_signup_notification()
         notifications = get_notifications()
-        self.assertEqual(1, len(notifications))
-
-        notification = notifications[0]
-        self.assertEqual(ut_json["id"], notification["id"])
+        notification = None
+        for n in notifications:
+            if n["id"] == ut_json["id"]:
+                notification = n
+        self.assertIsNotNone(notification)
         self.assertEqual("task-signup", notification["type"])
         self.assertEqual(ut_json["user_id"], notification["label"])
         self.assertEqual(
