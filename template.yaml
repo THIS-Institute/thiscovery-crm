@@ -99,8 +99,6 @@ Resources:
           Type: EventBridgeRule
           Properties:
             Pattern:
-              source:
-                - thiscovery
               detail-type:
                 - task_signup
             EventBusName: !Ref EnvConfigeventbridgeauth0eventbusAsString
