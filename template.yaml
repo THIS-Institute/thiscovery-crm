@@ -76,6 +76,33 @@ Resources:
     Metadata:
       StackeryName: process-notifications
 
+  RecordTaskSignup:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-RecordTaskSignup
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: RecordTaskSignup
+      Handler: task_signup.record_task_signup_event
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
+        - DynamoDBCrudPolicy:
+            TableName: !Ref notifications
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref notifications
+          TABLE_ARN: !GetAtt notifications.Arn
+      Events:
+        EventRule:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              detail-type:
+                - task_signup
+            EventBusName: !Ref EnvConfigeventbridgethiscoveryeventbusAsString
+
   RecordUserLogin:
     Type: AWS::Serverless::Function
     Properties:

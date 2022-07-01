@@ -17,11 +17,11 @@
 #
 import csv
 import os
-
-
 import thiscovery_lib.utilities as utils
 from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.hubspot_utilities import HubSpotClient
+
+from src.notification_process import get_notifications
 
 
 BASE_FOLDER = os.path.join(
@@ -59,3 +59,10 @@ def post_sample_users_to_crm(user_test_data_csv, hs_client=None):
                 user_json["id"],
                 user_jsonpatch,
             )
+
+
+def get_expected_notification(expected_id):
+    notifications = get_notifications()
+    for n in notifications:
+        if n["id"] == expected_id:
+            return n
