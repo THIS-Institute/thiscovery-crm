@@ -105,6 +105,15 @@ def create_task_signup_notification(
         "consented": "2019-05-26 18:16:56.087895+01",
         "id": ut_id,
         "created": "2018-06-13 14:15:16.171819+00",
+        "extra_data": {
+            "project_id": "5907275b-6d75-4ec0-ada8-5854b44fb955",
+            "project_name": "PSFU-05-pub-act",
+            "task_id": "6cf2f34e-e73f-40b1-99a1-d06c1f24381a",
+            "task_name": "PSFU-05-A",
+            "task_type_id": "a5537c85-7d29-4500-9986-ddc18b27d46f",
+            "task_type_name": "Photo upload",
+            "crm_id": "74701",
+        },
     }
     notify_new_task_signup(ut_json, None)
     return ut_json
@@ -205,23 +214,23 @@ class TestNotifications(test_tools.BaseTestCase):
             notification, "created", tolerance=TIME_TOLERANCE_SECONDS
         )
 
-    # def test_02_process_registration(self):
-    #     """
-    #     Tests processing of registration notifications. Also tests that notification content has not been altered by updates made during processing
-    #     """
-    #     self.maxDiff = None
-    #     create_registration_notification(user_json=TEST_USER_03_JSON)
-    #     notification = get_notifications()[0]
-    #     number_of_updated_rows_in_db, marking_result = np.process_user_registration(
-    #         notification
-    #     )
-    #     self.assertGreaterEqual(1, number_of_updated_rows_in_db)
-    #     self.assertEqual(
-    #         HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
-    #     )
-    #     # now check that notification contents are still the same
-    #     updated_notification = get_notifications()[0]
-    #     self.assertEqual(notification["details"], updated_notification["details"])
+    def test_02_process_registration(self):
+        """
+        Tests processing of registration notifications. Also tests that notification content has not been altered by updates made during processing
+        """
+        self.maxDiff = None
+        create_registration_notification(user_json=TEST_USER_03_JSON)
+        notification = test_utils.get_expected_notification(TEST_USER_03_JSON["id"])
+        patch_user_response, marking_result = np.process_user_registration(notification)
+        self.assertEqual(HTTPStatus.NO_CONTENT, patch_user_response["statusCode"])
+        self.assertEqual(
+            HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
+        )
+        # now check that notification contents are still the same
+        updated_notification = test_utils.get_expected_notification(
+            TEST_USER_03_JSON["id"]
+        )
+        self.assertEqual(notification["details"], updated_notification["details"])
 
     def test_03_post_signup(self):
         """
@@ -241,34 +250,38 @@ class TestNotifications(test_tools.BaseTestCase):
             notification, "created", tolerance=TIME_TOLERANCE_SECONDS
         )
 
-    # def test_04_process_signup(self):
-    #     """
-    #     Tests processing of task signup notifications
-    #     """
-    #     create_task_signup_notification()
-    #     notification = get_notifications()[0]
-    #     posting_result, marking_result = np.process_task_signup(notification)
-    #     self.assertEqual(HTTPStatus.NO_CONTENT, posting_result)
-    #     self.assertEqual(
-    #         HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
-    #     )
-    #
-    # def test_05_process_signup_with_expired_token(self):
-    #     expired_token = self.hs_client.get_expired_token_from_database()
-    #     self.hs_client.save_token(expired_token)
-    #     create_task_signup_notification()
-    #     notification = get_notifications()[0]
-    #     posting_result, marking_result = np.process_task_signup(notification)
-    #     self.assertEqual(HTTPStatus.NO_CONTENT, posting_result)
-    #     self.assertEqual(
-    #         HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
-    #     )
-    #     notification = get_notifications()[0]
-    #     self.assertEqual(
-    #         NotificationStatus.PROCESSED.value,
-    #         notification[NotificationAttributes.STATUS.value],
-    #     )
-    #
+    def test_04_process_signup(self):
+        """
+        Tests processing of task signup notifications
+        """
+        create_task_signup_notification()
+        notification = test_utils.get_expected_notification(
+            "c2712f2a-6ca6-4987-888f-19625668c887"
+        )
+        posting_result, marking_result = np.process_task_signup(notification)
+        self.assertEqual(HTTPStatus.NO_CONTENT, posting_result)
+        self.assertEqual(
+            HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
+        )
+
+    def test_05_process_signup_with_expired_token(self):
+        expired_token = self.hs_client.get_expired_token_from_database()
+        self.hs_client.save_token(expired_token)
+        create_task_signup_notification()
+        notification = test_utils.get_expected_notification(
+            "c2712f2a-6ca6-4987-888f-19625668c887"
+        )
+        posting_result, marking_result = np.process_task_signup(notification)
+        self.assertEqual(HTTPStatus.NO_CONTENT, posting_result)
+        self.assertEqual(
+            HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
+        )
+        notification = get_notifications()[0]
+        self.assertEqual(
+            NotificationStatus.PROCESSED.value,
+            notification[NotificationAttributes.STATUS.value],
+        )
+
     def test_06_post_login(self):
         """
         Tests processing of user login notifications
@@ -295,10 +308,10 @@ class TestNotifications(test_tools.BaseTestCase):
         Tests notification_process.process_user_login
         """
         create_login_notification(TEST_USER_02_JSON)
-        notifications = sorted(get_notifications(), key=lambda d: d['created'], reverse=True)
-        self.logger.debug("Notifications", extra={
-            "notifications": notifications
-        })
+        notifications = sorted(
+            get_notifications(), key=lambda d: d["created"], reverse=True
+        )
+        self.logger.debug("Notifications", extra={"notifications": notifications})
         notification = notifications[0]
         posting_result, marking_result = np.process_user_login(notification)
         self.assertEqual(HTTPStatus.NO_CONTENT, posting_result)
