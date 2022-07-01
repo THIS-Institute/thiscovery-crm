@@ -244,14 +244,111 @@ def process_notifications(event, context):
             raise NotImplementedError(error_message)
 
     for signup_notification in signup_notifications:
-        pass
-        # process_task_signup(signup_notification)
+        process_task_signup(signup_notification)
 
     for login_notification in login_notifications:
         process_user_login(login_notification)
 
     for email in transactional_emails:
         process_transactional_email(email)
+
+
+def process_user_registration(notification):
+    logger = get_logger()
+    correlation_id = new_correlation_id()
+    try:
+        notification_id = notification["id"]
+        details = notification["details"]
+        user_id = details["id"]
+        logger.info(
+            "process_user_registration: post to hubspot",
+            extra={
+                "notification_id": str(notification_id),
+                "user_id": str(user_id),
+                "email": details["email"],
+                "correlation_id": str(correlation_id),
+            },
+        )
+        hs_client = HubSpotClient(correlation_id=correlation_id)
+        hubspot_id, is_new = hs_client.post_new_user_to_crm(details)
+        logger.info(
+            "process_user_registration: hubspot details",
+            extra={
+                "notification_id": str(notification_id),
+                "hubspot_id": str(hubspot_id),
+                "isNew": str(is_new),
+                "correlation_id": str(correlation_id),
+            },
+        )
+
+        if hubspot_id == -1:
+            errorjson = {"user_id": user_id, "correlation_id": str(correlation_id)}
+            raise DetailedValueError("could not find user in HubSpot", errorjson)
+
+        user_jsonpatch = [
+            {"op": "replace", "path": "/crm_id", "value": str(hubspot_id)},
+        ]
+
+        number_of_updated_rows_in_db = patch_user(
+            user_id, user_jsonpatch, now_with_tz(), correlation_id
+        )
+        marking_result = mark_notification_processed(notification, correlation_id)
+        return number_of_updated_rows_in_db, marking_result
+
+    except Exception as ex:
+        error_message = str(ex)
+        mark_notification_failure(notification, error_message, correlation_id)
+
+
+def process_task_signup(notification):
+    logger = get_logger()
+    correlation_id = new_correlation_id()
+    logger.info(
+        "Processing task signup notification",
+        extra={"notification": notification, "correlation_id": correlation_id},
+    )
+    posting_result = None
+    marking_result = None
+    try:
+        # get basic data out of notification
+        signup_details = notification["details"]
+        user_task_id = signup_details["id"]
+
+        # get additional data that hubspot needs from database
+        extra_data = signup_details["extra_data"]
+
+        # put it all together for dispatch to HubSpot
+        signup_details.update(extra_data)
+        signup_details["signup_event_type"] = "Sign-up"
+
+        # check here that we have a hubspot id
+        if signup_details["crm_id"] is None:
+            errorjson = {
+                "user_task_id": user_task_id,
+                "correlation_id": str(correlation_id),
+            }
+            raise DetailedValueError("user does not have crm_id", errorjson)
+        else:
+            hs_client = HubSpotClient(correlation_id=correlation_id)
+            posting_result = hs_client.post_task_signup_to_crm(signup_details)
+            logger.debug(
+                "Response from HubSpot API",
+                extra={
+                    "posting_result": posting_result,
+                    "correlation_id": correlation_id,
+                },
+            )
+            if posting_result == http.HTTPStatus.NO_CONTENT:
+                marking_result = mark_notification_processed(
+                    notification, correlation_id
+                )
+    except Exception as ex:
+        error_message = str(ex)
+        marking_result = mark_notification_failure(
+            notification, error_message, correlation_id
+        )
+    finally:
+        return posting_result, marking_result
 
 
 def process_user_login(notification):
@@ -291,25 +388,36 @@ def process_user_login(notification):
 def process_transactional_email(notification, mock_server=False):
     logger = get_logger()
     correlation_id = new_correlation_id()
-    logger.info('Processing transactional email', extra={'notification': notification, 'correlation_id': correlation_id})
+    logger.info(
+        "Processing transactional email",
+        extra={"notification": notification, "correlation_id": correlation_id},
+    )
     posting_result = None
     marking_result = None
     try:
         from transactional_email import TransactionalEmail
+
         email = TransactionalEmail(
-            email_dict=notification['details'],
-            send_id=notification['id'],
-            correlation_id=correlation_id
+            email_dict=notification["details"],
+            send_id=notification["id"],
+            correlation_id=correlation_id,
         )
         posting_result = email.send(mock_server=mock_server)
-        logger.debug('Response from HubSpot API', extra={'posting_result': posting_result, 'correlation_id': correlation_id})
+        logger.debug(
+            "Response from HubSpot API",
+            extra={"posting_result": posting_result, "correlation_id": correlation_id},
+        )
         if posting_result.status_code == http.HTTPStatus.OK:
             marking_result = mark_notification_processed(notification, correlation_id)
     except Exception as ex:
         error_message = str(ex)
-        marking_result = mark_notification_failure(notification, error_message, correlation_id)
+        marking_result = mark_notification_failure(
+            notification, error_message, correlation_id
+        )
     finally:
         return posting_result, marking_result
+
+
 # endregion
 
 
@@ -356,4 +464,6 @@ def clear_notification_queue(event, context):
                 f"Failed to delete notification {n}; received response: {response}"
             )
     return deleted_notifications
+
+
 # endregion

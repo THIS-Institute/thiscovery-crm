@@ -192,11 +192,7 @@ class TestNotifications(test_tools.BaseTestCase):
         Tests the notification process associated with a new registration
         """
         user_json = create_registration_notification()
-        notifications = get_notifications()
-        notification = None
-        for n in notifications:
-            if n["id"] == user_json["id"]:
-                notification = n
+        notification = test_utils.get_expected_notification(user_json["id"])
         self.assertIsNotNone(notification)
         self.assertEqual("user-registration", notification["type"])
         self.assertEqual(user_json["email"], notification["label"])
@@ -232,11 +228,7 @@ class TestNotifications(test_tools.BaseTestCase):
         Tests the notification process associated with a new task signup
         """
         ut_json = create_task_signup_notification()
-        notifications = get_notifications()
-        notification = None
-        for n in notifications:
-            if n["id"] == ut_json["id"]:
-                notification = n
+        notification = test_utils.get_expected_notification(ut_json["id"])
         self.assertIsNotNone(notification)
         self.assertEqual("task-signup", notification["type"])
         self.assertEqual(ut_json["user_id"], notification["label"])
