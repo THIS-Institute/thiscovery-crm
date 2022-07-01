@@ -101,7 +101,7 @@ Resources:
             Pattern:
               detail-type:
                 - task_signup
-            EventBusName: !Ref EnvConfigeventbridgeauth0eventbusAsString
+            EventBusName: !Ref EnvConfigeventbridgethiscoveryeventbusAsString
 
   RecordUserLogin:
     Type: AWS::Serverless::Function
