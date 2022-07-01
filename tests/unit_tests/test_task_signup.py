@@ -30,8 +30,8 @@ import tests.testing_utilities as test_utils
 from src.notification_process import (
     delete_all_notifications,
     NotificationStatus,
-    NotificationType,
     NotificationAttributes,
+    process_notifications,
 )
 from src.task_signup import record_task_signup_event
 
@@ -90,6 +90,9 @@ class TestTaskSignup(test_tools.BaseTestCase):
         self.assertEqual(HTTPStatus.NO_CONTENT, result["statusCode"])
         notification = test_utils.get_expected_notification(ut_id)
         self.assertIsNotNone(notification)
+
+        # process notification
+        process_notifications(event=None, context=None)
 
         # check user now has sign-up timeline event
         hs_client = HubSpotClient(stack_name=const.STACK_NAME)

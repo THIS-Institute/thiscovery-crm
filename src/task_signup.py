@@ -31,8 +31,6 @@ def record_task_signup_event(event, context):
     correlation_id = event["id"]
     new_user_task = event["detail"]
     notify_new_task_signup(new_user_task, correlation_id)
-    # todo: decouple notification creation from processing by posting an event that triggers processing rather than calling processing method directly
-    np.process_notifications(event, context)
     return {
         "statusCode": HTTPStatus.NO_CONTENT,
     }
