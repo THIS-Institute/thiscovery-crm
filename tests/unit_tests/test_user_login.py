@@ -21,13 +21,12 @@ try:
 except ModuleNotFoundError:
     pass
 
-import thiscovery_lib.notifications as notif
-import thiscovery_lib.utilities as utils
 from thiscovery_dev_tools import testing_tools as test_tools
 from thiscovery_dev_tools.test_data.auth0_events import SUCCESSFUL_LOGIN
 from thiscovery_lib.lambda_utilities import Lambda
 
 import src.common.constants as const
+import src.notification_process as notif
 import src.user_login as ul
 
 
