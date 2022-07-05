@@ -66,3 +66,10 @@ def get_expected_notification(expected_id):
     for n in notifications:
         if n["id"] == expected_id:
             return n
+
+
+def get_expected_user_login_notification(expected_user_id):
+    notifications = get_notifications()
+    for n in notifications:
+        if (n["type"] == "user-login") and (n["details"]["id"] == expected_user_id):
+            return n

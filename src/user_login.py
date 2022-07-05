@@ -21,7 +21,7 @@ import thiscovery_lib.utilities as utils
 from thiscovery_lib.core_api_utilities import CoreApiClient
 
 import common.constants as const
-import src.notification_send as notif_send
+import notification_send as notif_send
 
 
 @utils.lambda_wrapper

@@ -19,7 +19,7 @@ import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
 
-from src.notification_send import (
+from notification_send import (
     notify_new_user_registration,
 )
 
