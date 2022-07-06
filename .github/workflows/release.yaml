@@ -133,6 +133,11 @@ jobs:
           sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
+      - name: Install dependencies
+        shell: bash
+        run: |
+          pip install -r requirements.txt
+
       - name: Assume the testing role in testing account
         uses: aws-actions/configure-aws-credentials@v1
         with:
