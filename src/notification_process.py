@@ -320,27 +320,29 @@ def process_task_signup(notification):
         signup_details.update(extra_data)
         signup_details["signup_event_type"] = "Sign-up"
 
-        # check here that we have a hubspot id
+        # fetch hubspot id if not present in event
         if signup_details["crm_id"] is None:
-            errorjson = {
-                "user_task_id": user_task_id,
-                "correlation_id": str(correlation_id),
-            }
-            raise DetailedValueError("user does not have crm_id", errorjson)
-        else:
-            hs_client = HubSpotClient(correlation_id=correlation_id)
-            posting_result = hs_client.post_task_signup_to_crm(signup_details)
-            logger.debug(
-                "Response from HubSpot API",
-                extra={
-                    "posting_result": posting_result,
-                    "correlation_id": correlation_id,
-                },
-            )
-            if posting_result == http.HTTPStatus.NO_CONTENT:
-                marking_result = mark_notification_processed(
-                    notification, correlation_id
-                )
+            core_client = CoreApiClient(correlation_id=str(correlation_id))
+            user = core_client.get_user_by_user_id(user_id=signup_details["user_id"])
+            signup_details["crm_id"] = user["crm_id"]
+            if signup_details["crm_id"] is None:
+                errorjson = {
+                    "user": user,
+                    "user_task_id": user_task_id,
+                    "correlation_id": str(correlation_id),
+                }
+                raise DetailedValueError("user does not have crm_id yet", errorjson)
+        hs_client = HubSpotClient(correlation_id=correlation_id)
+        posting_result = hs_client.post_task_signup_to_crm(signup_details)
+        logger.debug(
+            "Response from HubSpot API",
+            extra={
+                "posting_result": posting_result,
+                "correlation_id": correlation_id,
+            },
+        )
+        if posting_result == http.HTTPStatus.NO_CONTENT:
+            marking_result = mark_notification_processed(notification, correlation_id)
     except Exception as ex:
         error_message = str(ex)
         marking_result = mark_notification_failure(
