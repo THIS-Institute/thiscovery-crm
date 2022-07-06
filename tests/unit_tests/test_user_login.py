@@ -21,14 +21,14 @@ try:
 except ModuleNotFoundError:
     pass
 
-import thiscovery_lib.notifications as notif
-import thiscovery_lib.utilities as utils
 from thiscovery_dev_tools import testing_tools as test_tools
 from thiscovery_dev_tools.test_data.auth0_events import SUCCESSFUL_LOGIN
 from thiscovery_lib.lambda_utilities import Lambda
 
 import src.common.constants as const
+import src.notification_process as notif
 import src.user_login as ul
+import tests.testing_utilities as test_utils
 
 
 # region test users
@@ -58,10 +58,7 @@ class TestUserEvents(test_tools.BaseTestCase):
             )
         else:
             ul.record_user_login_event(SUCCESSFUL_LOGIN, None)
-        notifications = notif.get_notifications(stack_name=const.STACK_NAME)
-        self.assertEqual(1, len(notifications))
-
-        notification = notifications[0]
+        notification = test_utils.get_expected_user_login_notification(TEST_USER_01_JSON["id"])
         self.assertEqual("user-login", notification["type"])
         self.assertEqual(user_json["email"], notification["label"])
         self.assertEqual(

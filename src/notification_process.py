@@ -22,6 +22,7 @@ import traceback
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 from enum import Enum
+from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 from thiscovery_lib.hubspot_utilities import HubSpotClient
 from thiscovery_lib.utilities import (
@@ -226,8 +227,7 @@ def process_notifications(event, context):
     for notification in notifications:
         notification_type = notification["type"]
         if notification_type == NotificationType.USER_REGISTRATION.value:
-            pass
-            # process_user_registration(notification)
+            process_user_registration(notification)
         elif notification_type == NotificationType.TASK_SIGNUP.value:
             # add to list for later processing
             signup_notifications.append(notification)
@@ -289,11 +289,10 @@ def process_user_registration(notification):
             {"op": "replace", "path": "/crm_id", "value": str(hubspot_id)},
         ]
 
-        number_of_updated_rows_in_db = patch_user(
-            user_id, user_jsonpatch, now_with_tz(), correlation_id
-        )
+        core_client = CoreApiClient(correlation_id=str(correlation_id))
+        patch_user_response = core_client.patch_user(user_id, user_jsonpatch)
         marking_result = mark_notification_processed(notification, correlation_id)
-        return number_of_updated_rows_in_db, marking_result
+        return patch_user_response, marking_result
 
     except Exception as ex:
         error_message = str(ex)

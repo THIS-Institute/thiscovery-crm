@@ -18,7 +18,6 @@
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
 
-import notification_process as np
 from notification_send import notify_new_task_signup
 
 

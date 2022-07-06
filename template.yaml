@@ -12,6 +12,31 @@ Globals:
         SECRETS_NAMESPACE: !Sub /${EnvironmentTagName}/
 
 Resources:
+  ClearProcessedNotifications:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-ClearProcessedNotifications
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: ClearProcessedNotifications
+      Handler: notification_process.clear_notification_queue
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaENIManagementAccess
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
+        - DynamoDBCrudPolicy:
+            TableName: !Ref notifications
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref notifications
+          TABLE_ARN: !GetAtt notifications.Arn
+      Events:
+        Timer4:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
+
   CustomEmail:
     Type: AWS::Serverless::Function
     Properties:

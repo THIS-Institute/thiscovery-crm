@@ -19,7 +19,7 @@ import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
 
-from thiscovery_lib.notification_send import (
+from notification_send import (
     notify_new_user_registration,
 )
 
@@ -40,11 +40,6 @@ def record_user_registration_event(event, context):
         "id": metadata["citsci_uuid"],
     }
 
-    # Disabled notification creation for now because thiscovery-core is still
-    # responsible for processing user registrations
-    #
-    # notify_new_user_registration(
-    #     details, event["id"], stack_name=STACK_NAME
-    # )
+    notify_new_user_registration(details, event["id"], stack_name=STACK_NAME)
 
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}

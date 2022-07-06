@@ -18,10 +18,10 @@
 import json
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
-import thiscovery_lib.notification_send as notif_send
 from thiscovery_lib.core_api_utilities import CoreApiClient
 
 import common.constants as const
+import notification_send as notif_send
 
 
 @utils.lambda_wrapper
