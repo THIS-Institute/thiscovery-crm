@@ -23,12 +23,16 @@ except ModuleNotFoundError:
 
 import copy
 import json
+import random
+import string
+
 
 from http import HTTPStatus
 from pprint import pprint
 
 import thiscovery_dev_tools.testing_tools as test_tools
 import thiscovery_lib.utilities as utils
+from thiscovery_lib.core_api_utilities import CoreApiClient
 
 import src.common.constants as const
 from src.transactional_email import (
@@ -90,6 +94,7 @@ class TestTransactionalEmail(test_tools.BaseTestCase):
         cls.email = TransactionalEmail(
             email_dict=test_email_dict, send_id=utils.new_correlation_id()
         )
+        cls.core_client = CoreApiClient()
 
     def test_01_get_template_details_ok(self):
         template = self.email._get_template_details()
@@ -210,8 +215,29 @@ class TestTransactionalEmail(test_tools.BaseTestCase):
         self.assertEqual(HTTPStatus.OK, response.status_code)
 
     def test_11_send_email_user_without_hubspot_id(self):
+        # generate random email prefix to avoid database validation errors on subsequent runs
+        letters = string.ascii_lowercase
+        email_prefix = "".join(random.choice(letters) for i in range(10))
+        email_address = f"test_send_email_user_without_hubspot_id_{email_prefix}@email.co.uk"
+        result = self.core_client.post_user(
+            user_dict={
+                "email": email_address,
+                "title": "Mr",
+                "first_name": "Steven",
+                "last_name": "Walcorn",
+                "auth0_id": "1234abcd",
+                "country_code": "IT",
+                "status": "new",
+            }
+        )
+        user_id = json.loads(result['body'])["id"]
+        email_dict = copy.deepcopy(test_email_dict)
+        email_dict["to_recipient_id"] = user_id
+        t_email = TransactionalEmail(
+            email_dict=email_dict, send_id=utils.new_correlation_id()
+        )
         with self.assertRaises(utils.ObjectDoesNotExistError) as context:
-            self.email.send()
+            t_email.send()
         err = context.exception
         err_msg = err.args[0]
         self.assertIn("Recipient does not have a HubSpot id", err_msg)
