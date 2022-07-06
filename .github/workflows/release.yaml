@@ -86,8 +86,8 @@ jobs:
           deployment_role: ${{ env.PROD_DEPLOYMENT_ROLE }}
           artifacts_bucket: ${{ env.PROD_ARTIFACTS_BUCKET }}
 
-  test:
-    name: Test on AWS
+  deploy-testing:
+    name: Deploy to test env
     needs: [build-and-package]
     runs-on: ubuntu-latest
     steps:
@@ -118,7 +118,19 @@ jobs:
           template_name: ${{ env.PACKAGED_TEMPLATE }}
           deployment_role: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
 
-      # Currently, this step has to be done in the workflow rather than composite action due to this issue: https://github.com/actions/runner/issues/789
+
+  test:
+    name: Test on AWS
+    needs: [deploy-testing]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure testing environment
+        uses: THIS-Institute/actions-configure-test-env@v0.9
+        with:
+          afs25_account: ${{ secrets.AFS25_AWS_ACCOUNT }}
+          sem86_account: ${{ secrets.SEM86_AWS_ACCOUNT }}
+          amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
+
       - name: Assume the testing role in testing account
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -132,6 +144,7 @@ jobs:
 
       - name: Run tests
         uses: ./.github/actions/run-unittests
+
 
   deploy-staging:
     name: Deploy to staging
