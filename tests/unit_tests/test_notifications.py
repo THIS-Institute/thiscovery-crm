@@ -82,7 +82,7 @@ TEST_USER_03_JSON = {
     "last_name": "Davies",
     "country_code": "US",
     "country_name": "United States",
-    "status": "new",
+    # "status": "new",
 }
 # endregion
 

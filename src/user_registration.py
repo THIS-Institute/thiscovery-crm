@@ -17,6 +17,7 @@
 #
 import json
 from http import HTTPStatus
+import thiscovery_lib.countries_utilities as country_utils
 import thiscovery_lib.utilities as utils
 
 from notification_send import (
@@ -32,11 +33,13 @@ def record_user_registration_event(event, context):
     metadata = user_data["user_metadata"]
 
     details = {
+        "created": str(utils.now_with_tz()),
         "email": user_data["email"],
         "event_time": event["time"],
         "first_name": metadata["first_name"],
         "last_name": metadata["last_name"],
-        "country_name": metadata["country"],
+        "country_code": metadata["country"],
+        "country_name": country_utils.get_country_name(metadata["country"]),
         "id": metadata["citsci_uuid"],
     }
 
