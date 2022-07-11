@@ -20,6 +20,7 @@ import time
 
 import thiscovery_lib.utilities as utils
 import traceback
+from botocore.exceptions import ClientError
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 from enum import Enum
@@ -311,29 +312,35 @@ def process_test(notification):
 def mark_notification_being_processed(notification, correlation_id=None):
     logger = get_logger()
     notification_id = notification["id"]
-    ddb_client = Dynamodb(stack_name=const.STACK_NAME)
-    notification = ddb_client.get_item(
-        NOTIFICATION_TABLE_NAME,
-        notification_id,
-    )
-    if notification[NotificationAttributes.STATUS.value] not in [
-        NotificationStatus.NEW.value,
-        NotificationStatus.RETRYING.value,
-    ]:
-        logger.info(
-            f"Aborted processing of notification because its processing status "
-            f"was updated by another process: {notification}",
-            extra={"notification": notification},
-        )
     notification_updates = {
         NotificationAttributes.STATUS.value: NotificationStatus.PROCESSING.value
     }
-    return ddb_client.update_item(
-        NOTIFICATION_TABLE_NAME,
-        notification_id,
-        notification_updates,
-        correlation_id,
-    )
+    ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+    try:
+        update_response = ddb_client.update_item(
+            NOTIFICATION_TABLE_NAME,
+            notification_id,
+            notification_updates,
+            correlation_id,
+            ConditionExpression=f"({NotificationAttributes.STATUS.value} IN (:cat1, :cat2))",
+            ExpressionAttributeValues={
+                ":cat1": NotificationStatus.NEW.value,
+                ":cat2": NotificationStatus.RETRYING.value,
+            },
+        )
+    except ClientError as ex:
+        if ex.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            error_message = (
+                "Aborted notification processing (already marked as being processed)"
+            )
+        else:
+            error_message = "Failed to mark notification as being processed"
+        raise utils.DetailedIntegrityError(
+            error_message,
+            details={"notification": notification, "ddb_response": ex.response},
+        )
+    else:
+        return update_response
 
 
 def process_user_registration(notification):
