@@ -25,23 +25,20 @@ except ModuleNotFoundError:
     pass
 
 import copy
-import os
 import thiscovery_lib.utilities as utils
-import thiscovery_dev_tools.test_data as test_data
 import thiscovery_dev_tools.testing_tools as test_tools
 
 from datetime import timedelta
 from http import HTTPStatus
-from thiscovery_lib.eb_utilities import ThiscoveryEvent
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 from thiscovery_lib.hubspot_utilities import HubSpotClient
 from thiscovery_lib.utilities import DetailedValueError
 from test_transactional_email import test_email_dict
 
 import src.common.constants as const
-import src.notification_process as np
+import processnotifications.notification_process as np
 import tests.testing_utilities as test_utils
-from src.notification_process import (
+from processnotifications.notification_process import (
     NotificationStatus,
     NOTIFICATION_TABLE_NAME,
     NotificationAttributes,

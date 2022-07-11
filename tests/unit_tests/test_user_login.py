@@ -26,7 +26,7 @@ from thiscovery_dev_tools.test_data.auth0_events import SUCCESSFUL_LOGIN
 from thiscovery_lib.lambda_utilities import Lambda
 
 import src.common.constants as const
-import src.notification_process as notif
+import processnotifications.notification_process as notif
 import src.user_login as ul
 import tests.testing_utilities as test_utils
 
@@ -58,7 +58,9 @@ class TestUserEvents(test_tools.BaseTestCase):
             )
         else:
             ul.record_user_login_event(SUCCESSFUL_LOGIN, None)
-        notification = test_utils.get_expected_user_login_notification(TEST_USER_01_JSON["id"])
+        notification = test_utils.get_expected_user_login_notification(
+            TEST_USER_01_JSON["id"]
+        )
         self.assertEqual("user-login", notification["type"])
         self.assertEqual(user_json["email"], notification["label"])
         self.assertEqual(

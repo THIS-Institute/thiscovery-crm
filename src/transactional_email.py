@@ -21,7 +21,7 @@ from typing import Dict
 
 import thiscovery_lib.hubspot_utilities as hs
 import thiscovery_lib.utilities as utils
-import notification_process as np
+from processnotifications import notification_process as np
 from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 

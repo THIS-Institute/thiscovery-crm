@@ -309,6 +309,7 @@ def process_test(notification):
 
 
 def mark_notification_being_processed(notification, correlation_id=None):
+    logger = get_logger()
     notification_id = notification["id"]
     ddb_client = Dynamodb(stack_name=const.STACK_NAME)
     notification = ddb_client.get_item(
@@ -319,10 +320,10 @@ def mark_notification_being_processed(notification, correlation_id=None):
         NotificationStatus.NEW.value,
         NotificationStatus.RETRYING.value,
     ]:
-        raise utils.DuplicateInsertError(
+        logger.info(
             f"Aborted processing of notification because its processing status "
             f"was updated by another process: {notification}",
-            details={"notification": notification},
+            extra={"notification": notification},
         )
     notification_updates = {
         NotificationAttributes.STATUS.value: NotificationStatus.PROCESSING.value

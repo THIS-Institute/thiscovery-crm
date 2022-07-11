@@ -21,7 +21,7 @@ import thiscovery_lib.utilities as utils
 from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.hubspot_utilities import HubSpotClient
 
-from src.notification_process import get_notifications
+from processnotifications.notification_process import get_notifications
 
 
 BASE_FOLDER = os.path.join(

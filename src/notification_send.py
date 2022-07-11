@@ -19,8 +19,7 @@ import uuid
 import common.constants as const
 
 
-from notification_process import (
-    NotificationStatus,
+from processnotifications.notification_process import (
     NotificationType,
     save_notification,
     create_notification,
