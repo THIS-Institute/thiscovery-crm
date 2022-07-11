@@ -536,3 +536,42 @@ class TestNotifications(test_tools.BaseTestCase):
             NotificationStatus.NEW.value,
             notification[NotificationAttributes.STATUS.value],
         )
+
+    @unittest.skipUnless(
+        test_tools.tests_running_on_aws(),
+        "The goal of this test is to check notification processing "
+        "works with multiple concomitant processnotifications lambda invocations; "
+        "it is meaningless to run it locally",
+    )
+    def test_simultaneous_notification_processing(self):
+        self.ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+        self.ddb_client.put_item(
+            table_name="lookups",
+            key="test_simultaneous_notification_processing_count",
+            item_type="unittest_data",
+            item_details=dict(),
+            item={
+                "processing_attempts": 0,
+            },
+            update_allowed=True,
+        )
+        np.save_notification(
+            key="test_simultaneous_notification_processing_notification",
+            task_type=NotificationType.PROCESSING_TEST.value,
+            task_signup=dict(),
+            notification_item=np.create_notification(
+                label="test_simultaneous_notification_processing_notification"
+            ),
+            correlation_id=str(utils.new_correlation_id()),
+            stack_name=const.STACK_NAME,
+        )
+        np.put_process_notifications_event()
+        np.put_process_notifications_event()
+        np.put_process_notifications_event()
+        # np.process_notifications(dict(), None)
+        time.sleep(5)
+        processing_count = self.ddb_client.get_item(
+            table_name="lookups",
+            key="test_simultaneous_notification_processing_count",
+        )
+        self.assertEqual(1, int(processing_count["processing_attempts"]))

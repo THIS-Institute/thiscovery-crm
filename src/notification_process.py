@@ -16,6 +16,8 @@
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
 import http
+import time
+
 import thiscovery_lib.utilities as utils
 import traceback
 from datetime import datetime, timedelta
@@ -45,6 +47,7 @@ class NotificationType(Enum):
     TASK_SIGNUP = "task-signup"
     USER_LOGIN = "user-login"
     TRANSACTIONAL_EMAIL = "transactional-email"
+    PROCESSING_TEST = "processing-test"
 
 
 class NotificationStatus(Enum):
@@ -241,6 +244,7 @@ def process_notifications(event, context):
     signup_notifications = list()
     login_notifications = list()
     transactional_emails = list()
+    processing_tests = list()
     for notification in notifications:
         notification_type = notification["type"]
         if notification_type == NotificationType.USER_REGISTRATION.value:
@@ -253,6 +257,8 @@ def process_notifications(event, context):
             login_notifications.append(notification)
         elif notification_type == NotificationType.TRANSACTIONAL_EMAIL.value:
             transactional_emails.append(notification)
+        elif notification_type == NotificationType.PROCESSING_TEST.value:
+            processing_tests.append(notification)
         else:
             error_message = (
                 f"Processing of {notification_type} notifications not implemented yet"
@@ -269,9 +275,33 @@ def process_notifications(event, context):
     for email in transactional_emails:
         process_transactional_email(email)
 
+    for test in processing_tests:
+        process_test(test)
+
     return {
         "statusCode": HTTPStatus.OK,
     }
+
+
+def process_test(notification):
+    ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+    test_processing_count = ddb_client.get_item(
+        table_name="lookups",
+        key="test_simultaneous_notification_processing_count",
+    )
+    new_count = int(test_processing_count["processing_attempts"]) + 1
+    ddb_client.put_item(
+        table_name="lookups",
+        key="test_simultaneous_notification_processing_count",
+        item_type="unittest_data",
+        item_details=dict(),
+        item={
+            "processing_attempts": new_count,
+        },
+        update_allowed=True,
+    )
+    time.sleep(5)  # simulate a 5-seconds processing routine
+    return mark_notification_processed(notification, str(utils.new_correlation_id()))
 
 
 def process_user_registration(notification):
