@@ -1,0 +1,3 @@
+# AWS requirements go here
+https://github.com/THIS-Institute/thiscovery-lib/archive/refs/heads/master.zip
+# comment to test pipeline

@@ -49,6 +49,7 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
+        - AmazonEventBridgeFullAccess
       Events:
         EventRule:
           Type: EventBridgeRule
@@ -123,6 +124,7 @@ Resources:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
+        - AmazonEventBridgeFullAccess
       Environment:
         Variables:
           TABLE_NAME: !Ref notifications
@@ -150,6 +152,7 @@ Resources:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
+        - AmazonEventBridgeFullAccess
       Environment:
         Variables:
           TABLE_NAME: !Ref notifications
@@ -183,6 +186,7 @@ Resources:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
+        - AmazonEventBridgeFullAccess
       Environment:
         Variables:
           TABLE_NAME: !Ref notifications
@@ -222,6 +226,7 @@ Resources:
             TableName: !Ref notifications
         - DynamoDBCrudPolicy:
             TableName: !Ref lookups
+        - AmazonEventBridgeFullAccess
       Events:
         EventRule:
           Type: EventBridgeRule
