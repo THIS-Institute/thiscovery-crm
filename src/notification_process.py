@@ -52,6 +52,7 @@ class NotificationType(Enum):
 
 class NotificationStatus(Enum):
     NEW = "new"
+    PROCESSING = "processing"
     PROCESSED = "processed"
     RETRYING = "retrying"
     DLQ = "dlq"
@@ -284,6 +285,9 @@ def process_notifications(event, context):
 
 
 def process_test(notification):
+    logger = get_logger()
+    correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification)
     ddb_client = Dynamodb(stack_name=const.STACK_NAME)
     test_processing_count = ddb_client.get_item(
         table_name="lookups",
@@ -304,9 +308,37 @@ def process_test(notification):
     return mark_notification_processed(notification, str(utils.new_correlation_id()))
 
 
+def mark_notification_being_processed(notification, correlation_id=None):
+    notification_id = notification["id"]
+    ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+    notification = ddb_client.get_item(
+        NOTIFICATION_TABLE_NAME,
+        notification_id,
+    )
+    if notification[NotificationAttributes.STATUS.value] not in [
+        NotificationStatus.NEW.value,
+        NotificationStatus.RETRYING.value,
+    ]:
+        raise utils.DuplicateInsertError(
+            f"Aborted processing of notification because its processing status "
+            f"was updated by another process: {notification}",
+            details={"notification": notification},
+        )
+    notification_updates = {
+        NotificationAttributes.STATUS.value: NotificationStatus.PROCESSING.value
+    }
+    return ddb_client.update_item(
+        NOTIFICATION_TABLE_NAME,
+        notification_id,
+        notification_updates,
+        correlation_id,
+    )
+
+
 def process_user_registration(notification):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     try:
         notification_id = notification["id"]
         details = notification["details"]
@@ -353,6 +385,7 @@ def process_user_registration(notification):
 def process_task_signup(notification):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     logger.info(
         "Processing task signup notification",
         extra={"notification": notification, "correlation_id": correlation_id},
@@ -406,6 +439,7 @@ def process_task_signup(notification):
 def process_user_login(notification):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     logger.info(
         "Processing user login notification",
         extra={"notification": notification, "correlation_id": correlation_id},
@@ -440,6 +474,7 @@ def process_user_login(notification):
 def process_transactional_email(notification, mock_server=False):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     logger.info(
         "Processing transactional email",
         extra={"notification": notification, "correlation_id": correlation_id},

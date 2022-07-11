@@ -567,8 +567,6 @@ class TestNotifications(test_tools.BaseTestCase):
         )
         np.put_process_notifications_event()
         np.put_process_notifications_event()
-        np.put_process_notifications_event()
-        # np.process_notifications(dict(), None)
         time.sleep(5)
         processing_count = self.ddb_client.get_item(
             table_name="lookups",
