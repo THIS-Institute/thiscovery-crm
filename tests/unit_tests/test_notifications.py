@@ -15,6 +15,9 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
+import time
+import unittest
+
 try:
     import local.dev_config  # sets env variable 'TEST_ON_AWS'
     import local.secrets  # sets AWS profile as env variable
@@ -29,6 +32,7 @@ import thiscovery_dev_tools.testing_tools as test_tools
 
 from datetime import timedelta
 from http import HTTPStatus
+from thiscovery_lib.eb_utilities import ThiscoveryEvent
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 from thiscovery_lib.hubspot_utilities import HubSpotClient
 from thiscovery_lib.utilities import DetailedValueError
@@ -516,4 +520,19 @@ class TestNotifications(test_tools.BaseTestCase):
         self.assertEqual(HTTPStatus.OK, posting_result.status_code)
         self.assertEqual(
             HTTPStatus.OK, marking_result["ResponseMetadata"]["HTTPStatusCode"]
+        )
+
+    @unittest.skipUnless(
+        test_tools.tests_running_on_aws(),
+        "The goal of this test is to check we can trigger notification processing "
+        "via EB events; it is meaningless to run it locally",
+    )
+    def test_trigger_processing_via_event(self):
+        user_json = create_registration_notification()
+        np.put_process_notifications_event()
+        time.sleep(5)  # allow processing time
+        notification = test_utils.get_expected_notification(user_json["id"])
+        self.assertNotEqual(
+            NotificationStatus.NEW.value,
+            notification[NotificationAttributes.STATUS.value],
         )

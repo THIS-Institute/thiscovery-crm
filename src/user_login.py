@@ -21,6 +21,7 @@ import thiscovery_lib.utilities as utils
 from thiscovery_lib.core_api_utilities import CoreApiClient
 
 import common.constants as const
+import notification_process as np
 import notification_send as notif_send
 
 
@@ -56,4 +57,5 @@ def record_user_login_event(event, context):
         event_id,
         stack_name=const.STACK_NAME,
     )
+    np.put_process_notifications_event()
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}

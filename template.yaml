@@ -82,6 +82,13 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref HubspotEmailTemplates
       Events:
+        EventRule:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              detail-type:
+                - process_notifications
+            EventBusName: !Ref EnvConfigeventbridgethiscoveryeventbusAsString
         Timer9:
           Type: Schedule
           Properties:

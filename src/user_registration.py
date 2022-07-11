@@ -20,6 +20,7 @@ from http import HTTPStatus
 import thiscovery_lib.countries_utilities as country_utils
 import thiscovery_lib.utilities as utils
 
+import notification_process as np
 from notification_send import (
     notify_new_user_registration,
 )
@@ -44,5 +45,5 @@ def record_user_registration_event(event, context):
     }
 
     notify_new_user_registration(details, event["id"], stack_name=STACK_NAME)
-
+    np.put_process_notifications_event()
     return {"statusCode": HTTPStatus.OK, "body": json.dumps("")}
