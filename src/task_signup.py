@@ -18,6 +18,7 @@
 from http import HTTPStatus
 import thiscovery_lib.utilities as utils
 
+import notification_process as np
 from notification_send import notify_new_task_signup
 
 
@@ -30,6 +31,7 @@ def record_task_signup_event(event, context):
     correlation_id = event["id"]
     new_user_task = event["detail"]
     notify_new_task_signup(new_user_task, correlation_id)
+    np.put_process_notifications_event()
     return {
         "statusCode": HTTPStatus.NO_CONTENT,
     }

@@ -15,15 +15,16 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
-
 import http
 import thiscovery_lib.utilities as utils
 import traceback
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 from enum import Enum
+from http import HTTPStatus
 from thiscovery_lib.core_api_utilities import CoreApiClient
 from thiscovery_lib.dynamodb_utilities import Dynamodb
+from thiscovery_lib.eb_utilities import ThiscoveryEvent
 from thiscovery_lib.hubspot_utilities import HubSpotClient
 from thiscovery_lib.utilities import (
     get_logger,
@@ -118,6 +119,20 @@ def create_notification(label: str):
         "label": label,
     }
     return notification_item
+
+
+def put_process_notifications_event():
+    event = ThiscoveryEvent(
+        {
+            "detail-type": "process_notifications",
+            "detail": dict(),
+        }
+    )
+    result = event.put_event()
+    assert (
+        result["ResponseMetadata"]["HTTPStatusCode"] == HTTPStatus.OK
+    ), "Failed to put process_notifications event in thiscovery event bus"
+    return result
 
 
 def save_notification(
@@ -215,6 +230,8 @@ def mark_notification_failure(
 
 
 # region processing
+@utils.lambda_wrapper
+@utils.api_error_handler
 def process_notifications(event, context):
     logger = get_logger()
     notifications = get_notifications_to_process(stack_name=const.STACK_NAME)
@@ -251,6 +268,10 @@ def process_notifications(event, context):
 
     for email in transactional_emails:
         process_transactional_email(email)
+
+    return {
+        "statusCode": HTTPStatus.OK,
+    }
 
 
 def process_user_registration(notification):

@@ -283,8 +283,7 @@ def send_transactional_email(event, context):
     if alarm_test:
         raise utils.DeliberateError("Coffee is not available", details={})
     new_transactional_email_notification(email_dict, correlation_id)
-    # todo: decouple notification creation from processing by posting an event that triggers processing rather than calling processing method directly
-    np.process_notifications(event, context)
+    np.put_process_notifications_event()
     return {
         "statusCode": HTTPStatus.NO_CONTENT,
     }
