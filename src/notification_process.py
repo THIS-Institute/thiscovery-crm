@@ -310,7 +310,6 @@ def process_test(notification):
 
 
 def mark_notification_being_processed(notification, correlation_id=None):
-    logger = get_logger()
     notification_id = notification["id"]
     notification_updates = {
         NotificationAttributes.STATUS.value: NotificationStatus.PROCESSING.value
