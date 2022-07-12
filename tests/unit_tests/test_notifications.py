@@ -36,9 +36,9 @@ from thiscovery_lib.utilities import DetailedValueError
 from test_transactional_email import test_email_dict
 
 import src.common.constants as const
-import processnotifications.notification_process as np
+import notification_process as np
 import tests.testing_utilities as test_utils
-from processnotifications.notification_process import (
+from notification_process import (
     NotificationStatus,
     NOTIFICATION_TABLE_NAME,
     NotificationAttributes,

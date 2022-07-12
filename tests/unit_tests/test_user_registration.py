@@ -26,7 +26,7 @@ from thiscovery_dev_tools.test_data.auth0_events import SUCCESSFUL_REGISTRATION
 from thiscovery_lib.lambda_utilities import Lambda
 
 import src.common.constants as const
-import processnotifications.notification_process as notif
+import notification_process as notif
 import src.user_registration as ur
 
 from tests.unit_tests.test_user_login import TEST_USER_01_JSON

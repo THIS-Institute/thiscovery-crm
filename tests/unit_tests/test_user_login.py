@@ -26,7 +26,7 @@ from thiscovery_dev_tools.test_data.auth0_events import SUCCESSFUL_LOGIN
 from thiscovery_lib.lambda_utilities import Lambda
 
 import src.common.constants as const
-import processnotifications.notification_process as notif
+import notification_process as notif
 import src.user_login as ul
 import tests.testing_utilities as test_utils
 

@@ -21,7 +21,7 @@ import thiscovery_lib.utilities as utils
 from thiscovery_lib.core_api_utilities import CoreApiClient
 
 import common.constants as const
-from processnotifications import notification_process as np
+import notification_process as np
 import notification_send as notif_send
 
 

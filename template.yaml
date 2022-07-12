@@ -68,7 +68,6 @@ Resources:
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: process-notifications
-      CodeUri: src/processnotifications
       Handler: notification_process.process_notifications
       Policies:
         - AWSXrayWriteOnlyAccess

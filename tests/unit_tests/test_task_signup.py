@@ -29,7 +29,7 @@ from thiscovery_lib.hubspot_utilities import HubSpotClient, TASK_SIGNUP_TLE_TYPE
 
 import src.common.constants as const
 import tests.testing_utilities as test_utils
-from processnotifications.notification_process import (
+from notification_process import (
     delete_all_notifications,
     NotificationStatus,
     NotificationAttributes,

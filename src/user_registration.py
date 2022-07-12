@@ -20,7 +20,7 @@ from http import HTTPStatus
 import thiscovery_lib.countries_utilities as country_utils
 import thiscovery_lib.utilities as utils
 
-from processnotifications import notification_process as np
+import notification_process as np
 from notification_send import (
     notify_new_user_registration,
 )
