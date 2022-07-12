@@ -97,7 +97,10 @@ def create_registration_notification(user_json=TEST_USER_01_JSON):
 def create_task_signup_notification(
     ut_id="c2712f2a-6ca6-4987-888f-19625668c887",
     user_id="35224bd5-f8a8-41f6-8502-f96e12d6ddde",
+    crm_id=None,
 ):
+    if crm_id:
+        crm_id = str(crm_id)
     ut_json = {
         "user_id": user_id,
         "project_task_id": "99c155d1-9241-4185-af81-04819a406557",
@@ -113,7 +116,7 @@ def create_task_signup_notification(
             "task_name": "PSFU-05-A",
             "task_type_id": "a5537c85-7d29-4500-9986-ddc18b27d46f",
             "task_type_name": "Photo upload",
-            "crm_id": "74701",
+            "crm_id": crm_id,
         },
     }
     notify_new_task_signup(ut_json, None)
@@ -255,7 +258,7 @@ class TestNotifications(test_tools.BaseTestCase):
         """
         Tests processing of task signup notifications
         """
-        # ensure user exists in HubSpot
+        # ensure user exists in HubSpot and get crm_id
         user_json = {
             "id": "35224bd5-f8a8-41f6-8502-f96e12d6ddde",
             "created": "2018-08-17 12:10:56.70011+00",
@@ -267,9 +270,9 @@ class TestNotifications(test_tools.BaseTestCase):
             "avatar_string": "DD",
             "status": "new",
         }
-        self.hs_client.post_new_user_to_crm(user_json)
+        vid, _ = self.hs_client.post_new_user_to_crm(user_json)
 
-        create_task_signup_notification()
+        create_task_signup_notification(crm_id=vid)
         notification = test_utils.get_expected_notification(
             "c2712f2a-6ca6-4987-888f-19625668c887"
         )
