@@ -255,6 +255,20 @@ class TestNotifications(test_tools.BaseTestCase):
         """
         Tests processing of task signup notifications
         """
+        # ensure user exists in HubSpot
+        user_json = {
+            "id": "35224bd5-f8a8-41f6-8502-f96e12d6ddde",
+            "created": "2018-08-17 12:10:56.70011+00",
+            "email": "delia@email.co.uk",
+            "first_name": "Delia",
+            "last_name": "Davies",
+            "country_code": "US",
+            "country_name": "United States of America",
+            "avatar_string": "DD",
+            "status": "new",
+        }
+        self.hs_client.post_new_user_to_crm(user_json)
+
         create_task_signup_notification()
         notification = test_utils.get_expected_notification(
             "c2712f2a-6ca6-4987-888f-19625668c887"

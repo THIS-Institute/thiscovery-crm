@@ -69,6 +69,7 @@ Resources:
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: process-notifications
       Handler: notification_process.process_notifications
+      Timeout: 900
       Policies:
         - AWSXrayWriteOnlyAccess
         - AWSLambdaENIManagementAccess
