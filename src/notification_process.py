@@ -16,8 +16,11 @@
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
 import http
+import time
+
 import thiscovery_lib.utilities as utils
 import traceback
+from botocore.exceptions import ClientError
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 from enum import Enum
@@ -45,10 +48,12 @@ class NotificationType(Enum):
     TASK_SIGNUP = "task-signup"
     USER_LOGIN = "user-login"
     TRANSACTIONAL_EMAIL = "transactional-email"
+    PROCESSING_TEST = "processing-test"
 
 
 class NotificationStatus(Enum):
     NEW = "new"
+    PROCESSING = "processing"
     PROCESSED = "processed"
     RETRYING = "retrying"
     DLQ = "dlq"
@@ -241,6 +246,7 @@ def process_notifications(event, context):
     signup_notifications = list()
     login_notifications = list()
     transactional_emails = list()
+    processing_tests = list()
     for notification in notifications:
         notification_type = notification["type"]
         if notification_type == NotificationType.USER_REGISTRATION.value:
@@ -253,6 +259,8 @@ def process_notifications(event, context):
             login_notifications.append(notification)
         elif notification_type == NotificationType.TRANSACTIONAL_EMAIL.value:
             transactional_emails.append(notification)
+        elif notification_type == NotificationType.PROCESSING_TEST.value:
+            processing_tests.append(notification)
         else:
             error_message = (
                 f"Processing of {notification_type} notifications not implemented yet"
@@ -269,14 +277,75 @@ def process_notifications(event, context):
     for email in transactional_emails:
         process_transactional_email(email)
 
+    for test in processing_tests:
+        process_test(test)
+
     return {
         "statusCode": HTTPStatus.OK,
     }
 
 
+def process_test(notification):
+    logger = get_logger()
+    correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification)
+    ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+    test_processing_count = ddb_client.get_item(
+        table_name="lookups",
+        key="test_simultaneous_notification_processing_count",
+    )
+    new_count = int(test_processing_count["processing_attempts"]) + 1
+    ddb_client.put_item(
+        table_name="lookups",
+        key="test_simultaneous_notification_processing_count",
+        item_type="unittest_data",
+        item_details=dict(),
+        item={
+            "processing_attempts": new_count,
+        },
+        update_allowed=True,
+    )
+    time.sleep(5)  # simulate a 5-seconds processing routine
+    return mark_notification_processed(notification, str(utils.new_correlation_id()))
+
+
+def mark_notification_being_processed(notification, correlation_id=None):
+    notification_id = notification["id"]
+    notification_updates = {
+        NotificationAttributes.STATUS.value: NotificationStatus.PROCESSING.value
+    }
+    ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+    try:
+        update_response = ddb_client.update_item(
+            NOTIFICATION_TABLE_NAME,
+            notification_id,
+            notification_updates,
+            correlation_id,
+            ConditionExpression=f"({NotificationAttributes.STATUS.value} IN (:cat1, :cat2))",
+            ExpressionAttributeValues={
+                ":cat1": NotificationStatus.NEW.value,
+                ":cat2": NotificationStatus.RETRYING.value,
+            },
+        )
+    except ClientError as ex:
+        if ex.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            error_message = (
+                "Aborted notification processing (already marked as being processed)"
+            )
+        else:
+            error_message = "Failed to mark notification as being processed"
+        raise utils.DetailedIntegrityError(
+            error_message,
+            details={"notification": notification, "ddb_response": ex.response},
+        )
+    else:
+        return update_response
+
+
 def process_user_registration(notification):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     try:
         notification_id = notification["id"]
         details = notification["details"]
@@ -323,6 +392,7 @@ def process_user_registration(notification):
 def process_task_signup(notification):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     logger.info(
         "Processing task signup notification",
         extra={"notification": notification, "correlation_id": correlation_id},
@@ -376,6 +446,7 @@ def process_task_signup(notification):
 def process_user_login(notification):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     logger.info(
         "Processing user login notification",
         extra={"notification": notification, "correlation_id": correlation_id},
@@ -410,6 +481,7 @@ def process_user_login(notification):
 def process_transactional_email(notification, mock_server=False):
     logger = get_logger()
     correlation_id = new_correlation_id()
+    mark_notification_being_processed(notification, correlation_id)
     logger.info(
         "Processing transactional email",
         extra={"notification": notification, "correlation_id": correlation_id},

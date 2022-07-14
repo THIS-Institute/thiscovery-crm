@@ -29,7 +29,7 @@ from thiscovery_lib.hubspot_utilities import HubSpotClient, TASK_SIGNUP_TLE_TYPE
 
 import src.common.constants as const
 import tests.testing_utilities as test_utils
-from src.notification_process import (
+from notification_process import (
     delete_all_notifications,
     NotificationStatus,
     NotificationAttributes,
@@ -81,10 +81,27 @@ class TestTaskSignup(test_tools.BaseTestCase):
         delete_all_notifications(stack_name=const.STACK_NAME)
 
     def test_01_record_task_signup_event_ok(self):
+        # ensure user exists in HubSpot and get crm_id
+        user_json = {
+            "id": "dceac123-03a7-4e29-ab5a-739e347b374d",
+            "created": "2018-08-17 12:10:46.884543+00",
+            "email": "fred@email.co.uk",
+            "first_name": "Fred",
+            "last_name": "Flintstone",
+            "country_code": "US",
+            "country_name": "United States of America",
+            "avatar_string": "FF",
+            "status": "new",
+        }
+        hs_client = HubSpotClient(stack_name=const.STACK_NAME)
+        vid, _ = hs_client.post_new_user_to_crm(user_json)
+        test_event = copy.deepcopy(test_task_signup_event)
+        test_event["detail"]["extra_data"]["crm_id"] = str(vid)
+
         ut_id = test_user_task_dict["id"]
         result = test_tools.test_eb_request_v2(
             local_method=record_task_signup_event,
-            aws_eb_event=test_task_signup_event,
+            aws_eb_event=test_event,
             lambda_name="RecordTaskSignup",
             aws_processing_delay=5,
             stack_name=const.STACK_NAME,
@@ -94,7 +111,7 @@ class TestTaskSignup(test_tools.BaseTestCase):
         self.assertIsNotNone(notification)
 
         # process notification
-        process_notifications(event=None, context=None)
+        process_notifications(dict(), None)
 
         # check user now has sign-up timeline event
         hs_client = HubSpotClient(stack_name=const.STACK_NAME)
@@ -143,7 +160,7 @@ class TestTaskSignup(test_tools.BaseTestCase):
         self.assertIsNotNone(notification)
 
         # process notification
-        process_notifications(event=None, context=None)
+        process_notifications(dict(), None)
 
         # check user now has sign-up timeline event
         hs_client = HubSpotClient(stack_name=const.STACK_NAME)

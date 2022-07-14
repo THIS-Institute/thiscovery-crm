@@ -49,6 +49,7 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
+        - AmazonEventBridgeFullAccess
       Events:
         EventRule:
           Type: EventBridgeRule
@@ -68,6 +69,7 @@ Resources:
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: process-notifications
       Handler: notification_process.process_notifications
+      Timeout: 900
       Policies:
         - AWSXrayWriteOnlyAccess
         - AWSLambdaENIManagementAccess
@@ -122,6 +124,7 @@ Resources:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
+        - AmazonEventBridgeFullAccess
       Environment:
         Variables:
           TABLE_NAME: !Ref notifications
@@ -149,6 +152,7 @@ Resources:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
+        - AmazonEventBridgeFullAccess
       Environment:
         Variables:
           TABLE_NAME: !Ref notifications
@@ -182,6 +186,7 @@ Resources:
             SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
         - DynamoDBCrudPolicy:
             TableName: !Ref notifications
+        - AmazonEventBridgeFullAccess
       Environment:
         Variables:
           TABLE_NAME: !Ref notifications
@@ -221,6 +226,7 @@ Resources:
             TableName: !Ref notifications
         - DynamoDBCrudPolicy:
             TableName: !Ref lookups
+        - AmazonEventBridgeFullAccess
       Events:
         EventRule:
           Type: EventBridgeRule

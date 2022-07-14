@@ -25,23 +25,20 @@ except ModuleNotFoundError:
     pass
 
 import copy
-import os
 import thiscovery_lib.utilities as utils
-import thiscovery_dev_tools.test_data as test_data
 import thiscovery_dev_tools.testing_tools as test_tools
 
 from datetime import timedelta
 from http import HTTPStatus
-from thiscovery_lib.eb_utilities import ThiscoveryEvent
 from thiscovery_lib.dynamodb_utilities import Dynamodb
 from thiscovery_lib.hubspot_utilities import HubSpotClient
 from thiscovery_lib.utilities import DetailedValueError
 from test_transactional_email import test_email_dict
 
 import src.common.constants as const
-import src.notification_process as np
+import notification_process as np
 import tests.testing_utilities as test_utils
-from src.notification_process import (
+from notification_process import (
     NotificationStatus,
     NOTIFICATION_TABLE_NAME,
     NotificationAttributes,
@@ -100,7 +97,10 @@ def create_registration_notification(user_json=TEST_USER_01_JSON):
 def create_task_signup_notification(
     ut_id="c2712f2a-6ca6-4987-888f-19625668c887",
     user_id="35224bd5-f8a8-41f6-8502-f96e12d6ddde",
+    crm_id=None,
 ):
+    if crm_id:
+        crm_id = str(crm_id)
     ut_json = {
         "user_id": user_id,
         "project_task_id": "99c155d1-9241-4185-af81-04819a406557",
@@ -116,7 +116,7 @@ def create_task_signup_notification(
             "task_name": "PSFU-05-A",
             "task_type_id": "a5537c85-7d29-4500-9986-ddc18b27d46f",
             "task_type_name": "Photo upload",
-            "crm_id": "74701",
+            "crm_id": crm_id,
         },
     }
     notify_new_task_signup(ut_json, None)
@@ -258,7 +258,21 @@ class TestNotifications(test_tools.BaseTestCase):
         """
         Tests processing of task signup notifications
         """
-        create_task_signup_notification()
+        # ensure user exists in HubSpot and get crm_id
+        user_json = {
+            "id": "35224bd5-f8a8-41f6-8502-f96e12d6ddde",
+            "created": "2018-08-17 12:10:56.70011+00",
+            "email": "delia@email.co.uk",
+            "first_name": "Delia",
+            "last_name": "Davies",
+            "country_code": "US",
+            "country_name": "United States of America",
+            "avatar_string": "DD",
+            "status": "new",
+        }
+        vid, _ = self.hs_client.post_new_user_to_crm(user_json)
+
+        create_task_signup_notification(crm_id=vid)
         notification = test_utils.get_expected_notification(
             "c2712f2a-6ca6-4987-888f-19625668c887"
         )
@@ -536,3 +550,40 @@ class TestNotifications(test_tools.BaseTestCase):
             NotificationStatus.NEW.value,
             notification[NotificationAttributes.STATUS.value],
         )
+
+    @unittest.skipUnless(
+        test_tools.tests_running_on_aws(),
+        "The goal of this test is to check notification processing "
+        "works with multiple concomitant processnotifications lambda invocations; "
+        "it is meaningless to run it locally",
+    )
+    def test_simultaneous_notification_processing(self):
+        self.ddb_client = Dynamodb(stack_name=const.STACK_NAME)
+        self.ddb_client.put_item(
+            table_name="lookups",
+            key="test_simultaneous_notification_processing_count",
+            item_type="unittest_data",
+            item_details=dict(),
+            item={
+                "processing_attempts": 0,
+            },
+            update_allowed=True,
+        )
+        np.save_notification(
+            key="test_simultaneous_notification_processing_notification",
+            task_type=NotificationType.PROCESSING_TEST.value,
+            task_signup=dict(),
+            notification_item=np.create_notification(
+                label="test_simultaneous_notification_processing_notification"
+            ),
+            correlation_id=str(utils.new_correlation_id()),
+            stack_name=const.STACK_NAME,
+        )
+        np.put_process_notifications_event()
+        np.put_process_notifications_event()
+        time.sleep(5)
+        processing_count = self.ddb_client.get_item(
+            table_name="lookups",
+            key="test_simultaneous_notification_processing_count",
+        )
+        self.assertEqual(1, int(processing_count["processing_attempts"]))

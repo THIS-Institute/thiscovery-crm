@@ -20,7 +20,6 @@ import common.constants as const
 
 
 from notification_process import (
-    NotificationStatus,
     NotificationType,
     save_notification,
     create_notification,

@@ -15,4 +15,4 @@
 #   A copy of the GNU Affero General Public License is available in the
 #   docs folder of this project.  It is also available www.gnu.org/licenses/
 #
-STACK_NAME = 'thiscovery-crm'
+STACK_NAME = "thiscovery-crm"

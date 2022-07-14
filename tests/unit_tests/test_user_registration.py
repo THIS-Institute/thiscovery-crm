@@ -26,7 +26,7 @@ from thiscovery_dev_tools.test_data.auth0_events import SUCCESSFUL_REGISTRATION
 from thiscovery_lib.lambda_utilities import Lambda
 
 import src.common.constants as const
-import src.notification_process as notif
+import notification_process as notif
 import src.user_registration as ur
 
 from tests.unit_tests.test_user_login import TEST_USER_01_JSON
@@ -72,12 +72,11 @@ class TestUserRegistration(test_tools.BaseTestCase):
             so that it can be stored in RDS. I suggest doing so via an EventBridge
             event
     """
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        notif.delete_all_notifications(
-            stack_name=const.STACK_NAME
-        )
+        notif.delete_all_notifications(stack_name=const.STACK_NAME)
 
     def test_record_user_registration_ok(self):
         user_json = TEST_USER_01_JSON
