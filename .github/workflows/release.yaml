@@ -39,7 +39,7 @@ jobs:
         uses: THIS-Institute/actions-build-stack@v0.1
 
       - name: Package for testing env
-        uses: ./.github/actions/package
+        uses: THIS-Institute/actions-package-stack@v0.1
         with:
           from_env: ${{ env.AWS_TEST_ENV }}
           to_env: ${{ env.AWS_TEST_ENV }}
