@@ -33,7 +33,7 @@ jobs:
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
       - name: Build
-        uses: ./.github/actions/build-stack
+        uses: THIS-Institute/actions-build-stack
 
       - name: Package
         uses: ./.github/actions/package
