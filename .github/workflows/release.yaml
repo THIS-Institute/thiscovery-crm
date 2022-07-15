@@ -59,7 +59,7 @@ jobs:
           role-skip-session-tagging: true
 
       - name: Package for staging
-        uses: ./.github/actions/package
+        uses: THIS-Institute/actions-package-stack@v0.1
         with:
           from_env: ${{ env.AWS_TEST_ENV }}
           to_env: staging
@@ -79,7 +79,7 @@ jobs:
           role-skip-session-tagging: true
 
       - name: Package for production
-        uses: ./.github/actions/package
+        uses: THIS-Institute/actions-package-stack@v0.1
         with:
           from_env: staging
           to_env: prod
@@ -113,7 +113,7 @@ jobs:
           role-skip-session-tagging: true
 
       - name: deploy to test environment
-        uses: ./.github/actions/deploy-stack
+        uses: THIS-Institute/actions-deploy-stack@v0.1
         with:
           template_name: ${{ env.PACKAGED_TEMPLATE }}
           deployment_role: ${{ env.TESTING_ACCOUNT_DEPLOYMENT_ROLE }}
@@ -183,7 +183,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: deploy to staging
-        uses: ./.github/actions/deploy-stack
+        uses: THIS-Institute/actions-deploy-stack@v0.1
         with:
           template_name: ${{ env.PACKAGED_TEMPLATE }}
           deployment_role: ${{ env.STAGING_DEPLOYMENT_ROLE }}
@@ -218,7 +218,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: deploy to production
-        uses: ./.github/actions/deploy-stack
+        uses: THIS-Institute/actions-deploy-stack@v0.1
         with:
           template_name: ${{ env.PACKAGED_TEMPLATE }}
           deployment_role: ${{ env.PROD_DEPLOYMENT_ROLE }}
