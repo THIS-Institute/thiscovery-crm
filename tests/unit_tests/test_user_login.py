@@ -63,9 +63,12 @@ class TestUserEvents(test_tools.BaseTestCase):
         )
         self.assertEqual("user-login", notification["type"])
         self.assertEqual(user_json["email"], notification["label"])
-        self.assertEqual(
-            notif.NotificationStatus.NEW.value,
+        self.assertIn(
             notification[notif.NotificationAttributes.STATUS.value],
+            [
+                notif.NotificationStatus.NEW.value,
+                notif.NotificationStatus.PROCESSING.value,
+            ],
         )
         self.assertEqual(user_json["email"], notification["details"]["email"])
         self.assertEqual(user_json["id"], notification["details"]["id"])
