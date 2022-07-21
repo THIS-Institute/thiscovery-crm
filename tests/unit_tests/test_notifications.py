@@ -209,9 +209,10 @@ class TestNotifications(test_tools.BaseTestCase):
         self.assertIsNotNone(notification)
         self.assertEqual("user-registration", notification["type"])
         self.assertEqual(user_json["email"], notification["label"])
-        self.assertEqual(
-            NotificationStatus.NEW.value,
+        # allowing for asynchronous processing on AWS
+        self.assertIn(
             notification[NotificationAttributes.STATUS.value],
+            [NotificationStatus.NEW.value, NotificationStatus.PROCESSING.value],
         )
         self.assertEqual(user_json["email"], notification["details"]["email"])
         self.now_datetime_test_and_remove(
