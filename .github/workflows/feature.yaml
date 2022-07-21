@@ -33,10 +33,10 @@ jobs:
           amp205_account: ${{ secrets.AMP205_AWS_ACCOUNT }}
 
       - name: Build
-        uses: ./.github/actions/build-stack
+        uses: THIS-Institute/actions-build-stack@v0.1
 
       - name: Package
-        uses: ./.github/actions/package
+        uses: THIS-Institute/actions-package-stack@v0.1
         with:
           from_env: ${{ env.AWS_TEST_ENV }}
           to_env: ${{ env.AWS_TEST_ENV }}
@@ -78,4 +78,4 @@ jobs:
           role-skip-session-tagging: true
 
       - name: Run tests
-        uses: ./.github/actions/run-unittests
+        uses: THIS-Institute/actions-run-tests@v0.1
